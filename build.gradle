@@ -1,0 +1,129 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath 'com.github.maiflai:gradle-scalatest:0.19'
+    }
+}
+
+ext {
+    circeVersion = "0.9.3"
+    metricsVersion = "2.4.4"
+    http4sVersion = "0.18.15"
+    monixVersion = "3.0.0-RC1"
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'scala'
+    apply plugin: 'com.jfrog.bintray'
+    apply plugin: 'maven'
+    apply plugin: 'maven-publish'
+    apply plugin: 'com.github.maiflai.scalatest'
+
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+
+    group = 'com.avast.clients.stor'
+    version = version == 'unspecified' ? 'DEVELOPER-SNAPSHOT' : version
+
+    jar {
+        manifest {
+            attributes 'Implementation-Version': version
+        }
+    }
+
+    dependencies {
+        compile "org.http4s:http4s-dsl_2.12:$http4sVersion"
+        compile "org.http4s:http4s-blaze-client_2.12:$http4sVersion"
+
+        compile 'com.avast.hashes:scala-hashes_2.12:1.0.1'
+
+        compile 'com.github.pathikrit:better-files_2.12:3.4.0'
+        compile 'commons-codec:commons-codec:1.11'
+        compile 'commons-io:commons-io:2.6'
+
+        compile "io.circe:circe-core_2.12:$circeVersion"
+        compile "io.circe:circe-parser_2.12:$circeVersion"
+        compile "io.circe:circe-generic_2.12:$circeVersion"
+        compile "io.circe:circe-generic-extras_2.12:$circeVersion"
+
+        compile "io.monix:monix_2.12:$monixVersion"
+        compile "org.typelevel:cats-core_2.12:1.2.0"
+        compile "com.kailuowang:mainecoon-core_2.12:0.6.2"
+
+        compile 'com.typesafe:config:1.3.1'
+        compile "com.github.pureconfig:pureconfig_2.12:0.9.1"
+        compile "com.github.pureconfig:pureconfig-http4s_2.12:0.9.1"
+
+        compile "com.avast.metrics:metrics-scala_2.12:$metricsVersion"
+
+        compile "ch.qos.logback:logback-classic:1.1.8"
+        compile 'org.slf4j:jul-to-slf4j:1.7.23'
+        compile 'org.slf4j:jcl-over-slf4j:1.7.23'
+        compile 'com.typesafe.scala-logging:scala-logging_2.12:3.7.2'
+
+        testCompile "org.http4s:http4s-blaze-server_2.12:0.18.2"
+
+        testCompile 'junit:junit:4.12'
+        testCompile "org.scalatest:scalatest_2.12:3.0.5"
+        testCompile 'org.mockito:mockito-core:2.16.0'
+        testCompile "org.pegdown:pegdown:1.6.0"
+    }
+
+    task sourceJar(type: Jar) {
+        from sourceSets.main.allSource
+        classifier "sources"
+    }
+
+    publishing {
+        publications {
+            MyPublication(MavenPublication) {
+                from components.java
+                groupId project.group
+                version project.version
+                artifact sourceJar
+            }
+        }
+    }
+
+    artifacts {
+        archives jar
+        archives sourceJar
+    }
+
+    bintray {
+        user = System.getenv('BINTRAY_USER')
+        key = System.getenv('BINTRAY_KEY')
+        publish = true // auto publish
+        configurations = ['archives']
+
+        pkg {
+            repo = 'maven'
+            name = 'storage-client'
+            userOrg = 'avast'
+            desc = 'Scala client for storage services'
+            licenses = ['Apache-2.0']
+            vcsUrl = 'https://github.com/avast/storage-client.git'
+            githubRepo = 'avast/storage-client'
+            websiteUrl = 'https://github.com/avast/storage-client'
+            issueTrackerUrl = 'https://github.com/avast/storage-client/issues'
+            labels = ['stor', 'hcp', 's3', 'client', 'storage', 'scala']
+            version {
+                name = project.version
+                vcsTag = project.version
+            }
+        }
+    }
+
+}
+
