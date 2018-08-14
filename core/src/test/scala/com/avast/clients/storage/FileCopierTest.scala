@@ -1,4 +1,4 @@
-package com.avast.clients.storage.stor
+package com.avast.clients.storage
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
