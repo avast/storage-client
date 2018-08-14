@@ -15,7 +15,6 @@ ext {
     metricsVersion = "2.4.4"
     http4sVersion = "0.18.15"
     monixVersion = "3.0.0-RC1"
-    fpUtilsVersion = "0.2.0"
 }
 
 subprojects {

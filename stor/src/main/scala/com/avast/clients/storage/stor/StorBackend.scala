@@ -3,26 +3,27 @@ package com.avast.clients.storage.stor
 import java.io.ByteArrayInputStream
 
 import better.files.File
-import cats.effect.{Effect, Sync}
+import cats.effect.Effect
 import cats.syntax.all._
 import com.avast.clients.storage._
 import com.avast.scala.hashes.Sha256
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import monix.execution.Scheduler
 import org.http4s._
 import org.http4s.client.Client
 import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
 import org.http4s.headers.`Content-Length`
-import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
 import pureconfig.modules.http4s.uriReader
+import pureconfig.{CamelCase, ConfigFieldMapping, ProductHint}
+
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 
 trait StorBackend[F[_]] extends StorageBackend[F]
 
-class DefaultStorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Sync[F]) extends StorBackend[F] with StrictLogging {
+class DefaultStorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[F]) extends StorBackend[F] with StrictLogging {
 
   override def head(sha256: Sha256): F[Either[StorageException, HeadResult]] = {
     logger.debug(s"Checking presence of file $sha256 in Stor")
@@ -83,6 +84,8 @@ class DefaultStorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: 
     }
   }
 
+  override def close(): Unit = httpClient.shutdownNow()
+
   private def receiveStreamedFile(sha256: Sha256, dest: File, resp: Response[F]): F[Either[StorageException, GetResult]] = {
     `Content-Length`.from(resp.headers) match {
       case Some(clh) =>
@@ -133,10 +136,10 @@ object StorBackend {
     fieldMapping = ConfigFieldMapping(CamelCase, CamelCase)
   )
 
-  def fromConfig[F[_]: Effect](config: Config)(implicit sch: Scheduler): F[StorBackend[F]] = {
+  def fromConfig[F[_]: Effect](config: Config)(implicit ec: ExecutionContext): F[StorBackend[F]] = {
     val conf = pureconfig.loadConfigOrThrow[StorBackendConfiguration](config.withFallback(DefaultConfig))
 
-    Http1Client[F](conf.toBlazeConfig.copy(executionContext = sch))
+    Http1Client[F](conf.toBlazeConfig.copy(executionContext = ec))
       .map(new DefaultStorBackend[F](conf.uri, _))
   }
 }
