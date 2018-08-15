@@ -47,7 +47,7 @@ subprojects {
         compile 'org.slf4j:jcl-over-slf4j:1.7.23'
         compile 'com.typesafe.scala-logging:scala-logging_2.12:3.9.0'
 
-        testCompile "org.http4s:http4s-blaze-server_2.12:0.18.2"
+        testCompile "org.http4s:http4s-blaze-server_2.12:$http4sVersion"
 
         testCompile "ch.qos.logback:logback-classic:1.1.8"
         testCompile 'junit:junit:4.12'

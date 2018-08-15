@@ -41,7 +41,7 @@ class StorBackendTest extends FunSuite with ScalaFutures with MockitoSugar {
 
     val httpClient = Http1Client[Task]().runAsync.futureValue
 
-    val client = new DefaultStorBackend(
+    val client = new StorBackend(
       Uri.fromString(s"http://localhost:${server.address.getPort}").getOrElse(fail()),
       httpClient
     )
@@ -73,7 +73,7 @@ class StorBackendTest extends FunSuite with ScalaFutures with MockitoSugar {
 
     val httpClient = Http1Client[Task]().runAsync.futureValue
 
-    val client = new DefaultStorBackend(
+    val client = new StorBackend(
       Uri.fromString(s"http://localhost:${server.address.getPort}").getOrElse(fail()),
       httpClient
     )

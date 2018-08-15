@@ -21,9 +21,7 @@ import scala.concurrent.duration.Duration
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 
-trait StorBackend[F[_]] extends StorageBackend[F]
-
-class DefaultStorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[F]) extends StorBackend[F] with StrictLogging {
+class StorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[F]) extends StorageBackend[F] with StrictLogging {
 
   override def head(sha256: Sha256): F[Either[StorageException, HeadResult]] = {
     logger.debug(s"Checking presence of file $sha256 in Stor")
@@ -140,7 +138,7 @@ object StorBackend {
     val conf = pureconfig.loadConfigOrThrow[StorBackendConfiguration](config.withFallback(DefaultConfig))
 
     Http1Client[F](conf.toBlazeConfig.copy(executionContext = ec))
-      .map(new DefaultStorBackend[F](conf.uri, _))
+      .map(new StorBackend[F](conf.uri, _))
   }
 }
 
