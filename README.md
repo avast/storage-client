@@ -1,5 +1,6 @@
-# Scala Stor client
+# Scala storage client
 
-This is Scala implementation of client for [Stor](https://github.com/avast/stor).
+Finally-tagless implementation of client for misc. storages represented by backends. Supports backends fallbacking.
 
-Readme TBD :-)
+Currently supported backends:
+1. [Stor](https://github.com/avast/stor)

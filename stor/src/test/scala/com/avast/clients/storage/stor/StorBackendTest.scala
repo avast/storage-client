@@ -2,6 +2,7 @@ package com.avast.clients.storage.stor
 
 import cats.effect.IO
 import com.avast.clients.storage.stor.TestImplicits._
+import com.avast.clients.storage.{GetResult, HeadResult}
 import com.avast.scala.hashes.Sha256
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -15,7 +16,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.time.{Seconds, Span}
 
-class DefaultStorClientTest extends FunSuite with ScalaFutures with MockitoSugar {
+class StorBackendTest extends FunSuite with ScalaFutures with MockitoSugar {
   implicit val p: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds))
 
   test("head") {
@@ -40,7 +41,7 @@ class DefaultStorClientTest extends FunSuite with ScalaFutures with MockitoSugar
 
     val httpClient = Http1Client[Task]().runAsync.futureValue
 
-    val client = new DefaultStorClient(
+    val client = new StorBackend(
       Uri.fromString(s"http://localhost:${server.address.getPort}").getOrElse(fail()),
       httpClient
     )
@@ -72,7 +73,7 @@ class DefaultStorClientTest extends FunSuite with ScalaFutures with MockitoSugar
 
     val httpClient = Http1Client[Task]().runAsync.futureValue
 
-    val client = new DefaultStorClient(
+    val client = new StorBackend(
       Uri.fromString(s"http://localhost:${server.address.getPort}").getOrElse(fail()),
       httpClient
     )
