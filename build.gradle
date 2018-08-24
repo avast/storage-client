@@ -33,7 +33,7 @@ subprojects {
         jcenter()
     }
 
-    group = 'com.avast.clients.stor'
+    group = 'com.avast.clients.storage'
     version = version == 'unspecified' ? 'DEVELOPER-SNAPSHOT' : version
 
     jar {

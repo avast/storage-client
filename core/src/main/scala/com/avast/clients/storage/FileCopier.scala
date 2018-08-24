@@ -14,10 +14,10 @@ class FileCopier {
 
   private var finalHash: Option[Sha256] = None // scalastyle:ignore
 
-  def copy(is: InputStream, os: OutputStream): Int = lock.synchronized {
+  def copy(is: InputStream, os: OutputStream): Long = lock.synchronized {
     val fis = new ProxyInputStream(is)(digest.update(_))
 
-    IOUtils.copy(fis, os)
+    IOUtils.copyLarge(fis, os)
   }
 
   def finalSha256: Sha256 = lock.synchronized {

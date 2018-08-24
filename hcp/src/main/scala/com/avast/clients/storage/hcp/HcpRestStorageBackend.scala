@@ -1,18 +1,19 @@
-package com.avast.clients.storage.stor
-
+package com.avast.clients.storage.hcp
 import java.io.ByteArrayInputStream
 
 import better.files.File
+import cats.data.NonEmptyList
 import cats.effect.Effect
 import cats.syntax.all._
-import com.avast.clients.storage._
+import com.avast.clients.storage.hcp.HcpRestStorageBackend._
+import com.avast.clients.storage.{ConfigurationException, FileCopier, GetResult, HeadResult, StorageBackend, StorageException}
 import com.avast.scala.hashes.Sha256
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import org.http4s._
 import org.http4s.client.Client
 import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
 import org.http4s.headers.`Content-Length`
+import org.http4s.{Method, Request, Response, Status, _}
 import pureconfig._
 import pureconfig.error.ConfigReaderException
 import pureconfig.modules.http4s.uriReader
@@ -21,16 +22,16 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.language.higherKinds
 import scala.util.control.NonFatal
-
-class StorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[F]) extends StorageBackend[F] with StrictLogging {
-
+class HcpRestStorageBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[F]) extends StorageBackend[F] with StrictLogging {
   override def head(sha256: Sha256): F[Either[StorageException, HeadResult]] = {
-    logger.debug(s"Checking presence of file $sha256 in Stor")
+    logger.debug(s"Checking presence of file $sha256 in HCP")
+
+    val finalUri: Uri = splitFileName(sha256).foldLeft(rootUri)(_ / _)
 
     try {
       val request = Request[F](
         Method.HEAD,
-        rootUri / sha256.toString
+        finalUri
       )
 
       httpClient.fetch(request) { resp =>
@@ -58,12 +59,14 @@ class StorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[
   }
 
   override def get(sha256: Sha256, dest: File): F[Either[StorageException, GetResult]] = {
-    logger.debug(s"Getting file $sha256 from Stor")
+    logger.debug(s"Getting file $sha256 from HCP")
+
+    val finalUri: Uri = splitFileName(sha256).foldLeft(rootUri)(_ / _)
 
     try {
       val request = Request[F](
         Method.GET,
-        rootUri / sha256.toString
+        finalUri
       )
 
       httpClient.fetch(request) { resp =>
@@ -130,34 +133,61 @@ class StorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[
   }
 }
 
-object StorBackend {
-  private val RootConfigKey = "storBackendDefaults"
+object HcpRestStorageBackend {
+  private val RootConfigKey = "hcpRestBackendDefaults"
   private val DefaultConfig = ConfigFactory.defaultReference().getConfig(RootConfigKey)
 
   // configure pureconfig:
-  private implicit val ph: ProductHint[StorBackendConfiguration] = ProductHint[StorBackendConfiguration](
+  private implicit val ph: ProductHint[HcpRestBackendConfiguration] = ProductHint[HcpRestBackendConfiguration](
     fieldMapping = ConfigFieldMapping(CamelCase, CamelCase)
   )
 
-  def fromConfig[F[_]: Effect](config: Config)(implicit ec: ExecutionContext): Either[ConfigurationException, F[StorBackend[F]]] = {
-    pureconfig
-      .loadConfig[StorBackendConfiguration](config.withFallback(DefaultConfig))
-      .map { conf =>
-        Http1Client[F](conf.toBlazeConfig.copy(executionContext = ec))
-          .map(new StorBackend[F](conf.uri, _))
+  def fromConfig[F[_]: Effect](config: Config)(
+      implicit ec: ExecutionContext): Either[ConfigurationException, F[HcpRestStorageBackend[F]]] = {
+
+    def assembleUri(repository: String, namespace: String, tenant: String, protocol: String): Either[ConfigurationException, Uri] = {
+      Uri
+        .fromString(s"$protocol://$namespace.$tenant.$repository/rest")
+        .leftMap(ConfigurationException("Could not assemble final URI", _))
+
+    }
+
+    def loadConfig: Either[ConfigurationException, HcpRestBackendConfiguration] = {
+      pureconfig
+        .loadConfig[HcpRestBackendConfiguration](config.withFallback(DefaultConfig))
+        .leftMap { failures =>
+          ConfigurationException("Could not load config", new ConfigReaderException[HcpRestBackendConfiguration](failures))
+        }
+    }
+
+    for {
+      conf <- loadConfig
+      uri <- {
+        import conf._
+        assembleUri(repository, namespace, tenant, protocol)
       }
-      .leftMap { failures =>
-        ConfigurationException("Could not load config", new ConfigReaderException[StorBackendConfiguration](failures))
-      }
+    } yield {
+      Http1Client[F](conf.toBlazeConfig.copy(executionContext = ec))
+        .map(new HcpRestStorageBackend[F](uri, _))
+    }
+  }
+
+  private[storage] def splitFileName(sha256: Sha256): NonEmptyList[String] = {
+    val str = sha256.toString()
+
+    NonEmptyList.of(str.substring(0, 2), str.substring(2, 4), str.substring(4, 6), str)
   }
 }
 
-private case class StorBackendConfiguration(uri: Uri,
-                                            requestTimeout: Duration,
-                                            socketTimeout: Duration,
-                                            responseHeaderTimeout: Duration,
-                                            maxConnections: Int,
-                                            userAgent: Option[String]) {
+private case class HcpRestBackendConfiguration(repository: String,
+                                               namespace: String,
+                                               tenant: String,
+                                               protocol: String,
+                                               requestTimeout: Duration,
+                                               socketTimeout: Duration,
+                                               responseHeaderTimeout: Duration,
+                                               maxConnections: Int,
+                                               userAgent: Option[String]) {
   def toBlazeConfig: BlazeClientConfig = BlazeClientConfig.defaultConfig.copy(
     requestTimeout = requestTimeout,
     maxTotalConnections = maxConnections,

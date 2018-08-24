@@ -19,3 +19,7 @@ class DefaultStorageClient[F[_]: Effect](backend: StorageBackend[F]) extends Sto
 
   override def close(): Unit = backend.close()
 }
+
+object StorageClient {
+  def apply[F[_]: Effect](backend: StorageBackend[F]): StorageClient[F] = new DefaultStorageClient[F](backend)
+}
