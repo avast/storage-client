@@ -13,9 +13,9 @@ import org.http4s._
 import org.http4s.client.Client
 import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
 import org.http4s.headers.`Content-Length`
+import pureconfig._
 import pureconfig.error.ConfigReaderException
 import pureconfig.modules.http4s.uriReader
-import pureconfig._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -94,27 +94,31 @@ class StorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[
         resp.body.chunks
           .map { bytes =>
             val bis = new ByteArrayInputStream(bytes.toArray)
-            val copied = fileCopier.copy(bis, fileOs)
-            bis.close()
-            copied
+            try {
+              fileCopier.copy(bis, fileOs)
+            } finally {
+              bis.close()
+            }
           }
           .compile
           .toVector
+          .onError {
+            case NonFatal(_) => F.delay(fileOs.close())
+          }
           .map { chunksSizes =>
             val transferred = chunksSizes.sum
 
             fileOs.close() // all data has been transferred
 
             if (clh.length != transferred) {
-              Left(
-                StorageException.InvalidResponseException(resp.status.code, "-stream-", s"Expected ${clh.length} B but got $transferred B"))
+              Left(StorageException.InvalidDataException(resp.status.code, "-stream-", s"Expected ${clh.length} B but got $transferred B"))
             } else {
               val transferredSha = fileCopier.finalSha256
 
               if (transferredSha != sha256) {
-                Left(
-                  StorageException
-                    .InvalidResponseException(resp.status.code, "-stream-", s"Expected SHA256 $sha256 but got $transferredSha"))
+                Left {
+                  StorageException.InvalidDataException(resp.status.code, "-stream-", s"Expected SHA256 $sha256 but got $transferredSha")
+                }
               } else {
                 Right(GetResult.Downloaded(dest, transferred))
               }

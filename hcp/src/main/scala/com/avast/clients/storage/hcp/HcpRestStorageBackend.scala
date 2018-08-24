@@ -97,27 +97,31 @@ class HcpRestStorageBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit 
         resp.body.chunks
           .map { bytes =>
             val bis = new ByteArrayInputStream(bytes.toArray)
-            val copied = fileCopier.copy(bis, fileOs)
-            bis.close()
-            copied
+            try {
+              fileCopier.copy(bis, fileOs)
+            } finally {
+              bis.close()
+            }
           }
           .compile
           .toVector
+          .onError {
+            case NonFatal(_) => F.delay(fileOs.close())
+          }
           .map { chunksSizes =>
             val transferred = chunksSizes.sum
 
             fileOs.close() // all data has been transferred
 
             if (clh.length != transferred) {
-              Left(
-                StorageException.InvalidResponseException(resp.status.code, "-stream-", s"Expected ${clh.length} B but got $transferred B"))
+              Left(StorageException.InvalidDataException(resp.status.code, "-stream-", s"Expected ${clh.length} B but got $transferred B"))
             } else {
               val transferredSha = fileCopier.finalSha256
 
               if (transferredSha != sha256) {
-                Left(
-                  StorageException
-                    .InvalidResponseException(resp.status.code, "-stream-", s"Expected SHA256 $sha256 but got $transferredSha"))
+                Left {
+                  StorageException.InvalidDataException(resp.status.code, "-stream-", s"Expected SHA256 $sha256 but got $transferredSha")
+                }
               } else {
                 Right(GetResult.Downloaded(dest, transferred))
               }

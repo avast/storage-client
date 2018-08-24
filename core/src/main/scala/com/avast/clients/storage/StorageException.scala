@@ -7,4 +7,7 @@ object StorageException {
   case class InvalidResponseException(status: Int, body: String, desc: String, cause: Throwable = null)
       extends StorageException(s"Invalid response with status $status: $desc", cause)
 
+  case class InvalidDataException(status: Int, body: String, desc: String, cause: Throwable = null)
+    extends StorageException(s"Invalid response data [ with status $status ]: $desc", cause)
+
 }
