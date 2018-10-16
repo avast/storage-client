@@ -13,9 +13,9 @@ import org.http4s._
 import org.http4s.client.Client
 import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
 import org.http4s.headers.`Content-Length`
-import pureconfig._
 import pureconfig.error.ConfigReaderException
 import pureconfig.modules.http4s.uriReader
+import pureconfig._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -39,7 +39,7 @@ class StorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[
             `Content-Length`.from(resp.headers) match {
               case Some(`Content-Length`(length)) => F.pure(Right(HeadResult.Exists(length)))
               case None =>
-                resp.bodyAsText.compile.last.map { body =>
+                resp.bodyAsText.compile.toList.map(_.mkString).map { body =>
                   Left(StorageException.InvalidResponseException(resp.status.code, body.toString, "Missing Content-Length header"))
                 }
             }
@@ -47,7 +47,7 @@ class StorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[
             F.pure(Right(HeadResult.NotFound))
 
           case _ =>
-            resp.bodyAsText.compile.last.map { body =>
+            resp.bodyAsText.compile.toList.map(_.mkString).map { body =>
               Left(StorageException.InvalidResponseException(resp.status.code, body.toString, "Unexpected status"))
             }
         }
@@ -72,7 +72,7 @@ class StorBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit F: Effect[
           case Status.NotFound => F.pure(Right(GetResult.NotFound))
 
           case _ =>
-            resp.bodyAsText.compile.last.map { body =>
+            resp.bodyAsText.compile.toList.map(_.mkString).map { body =>
               Left(StorageException.InvalidResponseException(resp.status.code, body.toString, "Unexpected status"))
             }
         }

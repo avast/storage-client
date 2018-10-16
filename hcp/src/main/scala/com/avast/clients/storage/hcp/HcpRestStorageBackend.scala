@@ -40,7 +40,7 @@ class HcpRestStorageBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit 
             `Content-Length`.from(resp.headers) match {
               case Some(`Content-Length`(length)) => F.pure(Right(HeadResult.Exists(length)))
               case None =>
-                resp.bodyAsText.compile.last.map { body =>
+                resp.bodyAsText.compile.toList.map(_.mkString).map { body =>
                   Left(StorageException.InvalidResponseException(resp.status.code, body.toString, "Missing Content-Length header"))
                 }
             }
@@ -48,7 +48,7 @@ class HcpRestStorageBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit 
             F.pure(Right(HeadResult.NotFound))
 
           case _ =>
-            resp.bodyAsText.compile.last.map { body =>
+            resp.bodyAsText.compile.toList.map(_.mkString).map { body =>
               Left(StorageException.InvalidResponseException(resp.status.code, body.toString, "Unexpected status"))
             }
         }
@@ -75,7 +75,7 @@ class HcpRestStorageBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit 
           case Status.NotFound => F.pure(Right(GetResult.NotFound))
 
           case _ =>
-            resp.bodyAsText.compile.last.map { body =>
+            resp.bodyAsText.compile.toList.map(_.mkString).map { body =>
               Left(StorageException.InvalidResponseException(resp.status.code, body.toString, "Unexpected status"))
             }
         }
@@ -105,9 +105,6 @@ class HcpRestStorageBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit 
           }
           .compile
           .toVector
-          .onError {
-            case NonFatal(_) => F.delay(fileOs.close())
-          }
           .map { chunksSizes =>
             val transferred = chunksSizes.sum
 
