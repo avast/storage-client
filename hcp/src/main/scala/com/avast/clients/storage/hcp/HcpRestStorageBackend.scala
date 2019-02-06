@@ -16,7 +16,6 @@ import org.http4s.headers.`Content-Length`
 import org.http4s.{Method, Request, Response, Status, _}
 import pureconfig._
 import pureconfig.error.ConfigReaderException
-import pureconfig.modules.http4s.uriReader
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -86,8 +85,6 @@ class HcpRestStorageBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit 
     }
   }
 
-  override def close(): Unit = httpClient.shutdownNow()
-
   private def receiveStreamedFile(sha256: Sha256, dest: File, resp: Response[F]): F[Either[StorageException, GetResult]] = {
     `Content-Length`.from(resp.headers) match {
       case Some(clh) =>
@@ -128,6 +125,8 @@ class HcpRestStorageBackend[F[_]](rootUri: Uri, httpClient: Client[F])(implicit 
       case None => F.pure(Left(StorageException.InvalidResponseException(resp.status.code, "-stream-", "Missing Content-Length header")))
     }
   }
+
+  override def close(): Unit = httpClient.shutdownNow()
 }
 
 object HcpRestStorageBackend {
@@ -188,6 +187,7 @@ private case class HcpRestBackendConfiguration(repository: String,
   def toBlazeConfig: BlazeClientConfig = BlazeClientConfig.defaultConfig.copy(
     requestTimeout = requestTimeout,
     maxTotalConnections = maxConnections,
+    maxConnectionsPerRequestKey = _ => maxConnections,
     responseHeaderTimeout = responseHeaderTimeout,
     idleTimeout = socketTimeout,
     userAgent = userAgent.map {
