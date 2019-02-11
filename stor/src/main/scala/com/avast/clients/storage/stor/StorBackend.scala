@@ -161,6 +161,7 @@ private case class StorBackendConfiguration(uri: Uri,
   def toBlazeConfig: BlazeClientConfig = BlazeClientConfig.defaultConfig.copy(
     requestTimeout = requestTimeout,
     maxTotalConnections = maxConnections,
+    maxConnectionsPerRequestKey = _ => maxConnections,
     responseHeaderTimeout = responseHeaderTimeout,
     idleTimeout = socketTimeout,
     userAgent = userAgent.map {

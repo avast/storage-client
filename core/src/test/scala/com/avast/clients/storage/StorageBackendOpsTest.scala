@@ -10,7 +10,7 @@ import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 
 class StorageBackendOpsTest extends FunSuite with ScalaFutures {
-  test("withFallbackTo - fallback not used") {
+  test("withFallbackIfError - fallback not used") {
     val first = new StorageBackend[Task] {
       override def head(sha256: Sha256): Task[Either[StorageException, HeadResult]] = Task.now(Right(HeadResult.Exists(42)))
 
@@ -28,14 +28,14 @@ class StorageBackendOpsTest extends FunSuite with ScalaFutures {
       override def close(): Unit = ()
     }
 
-    val merged = first.withFallbackTo(second)
+    val merged = first.withFallbackIfError(second)
 
     assertResult(Right(HeadResult.Exists(42)))(merged.head(randomSha).runAsync.futureValue)
     val dest = File.newTemporaryFile()
     assertResult(Right(GetResult.Downloaded(dest, 42)))(merged.get(randomSha, dest).runAsync.futureValue)
   }
 
-  test("withFallbackTo - fallback used") {
+  test("withFallbackIfError - fallback used") {
     val first = new StorageBackend[Task] {
       override def head(sha256: Sha256): Task[Either[StorageException, HeadResult]] = Task.now(Left(InvalidResponseException(500, "", "")))
 
@@ -54,7 +54,7 @@ class StorageBackendOpsTest extends FunSuite with ScalaFutures {
       override def close(): Unit = ()
     }
 
-    val merged = first.withFallbackTo(second)
+    val merged = first.withFallbackIfError(second)
 
     assertResult(Right(HeadResult.Exists(42)))(merged.head(randomSha).runAsync.futureValue)
     val dest = File.newTemporaryFile()
