@@ -30,9 +30,9 @@ class StorageBackendOpsTest extends FunSuite with ScalaFutures {
 
     val merged = first.withFallbackIfError(second)
 
-    assertResult(Right(HeadResult.Exists(42)))(merged.head(randomSha).runAsync.futureValue)
+    assertResult(Right(HeadResult.Exists(42)))(merged.head(randomSha).runToFuture.futureValue)
     val dest = File.newTemporaryFile()
-    assertResult(Right(GetResult.Downloaded(dest, 42)))(merged.get(randomSha, dest).runAsync.futureValue)
+    assertResult(Right(GetResult.Downloaded(dest, 42)))(merged.get(randomSha, dest).runToFuture.futureValue)
   }
 
   test("withFallbackIfError - fallback used") {
@@ -56,8 +56,8 @@ class StorageBackendOpsTest extends FunSuite with ScalaFutures {
 
     val merged = first.withFallbackIfError(second)
 
-    assertResult(Right(HeadResult.Exists(42)))(merged.head(randomSha).runAsync.futureValue)
+    assertResult(Right(HeadResult.Exists(42)))(merged.head(randomSha).runToFuture.futureValue)
     val dest = File.newTemporaryFile()
-    assertResult(Right(GetResult.Downloaded(dest, 42)))(merged.get(randomSha, dest).runAsync.futureValue)
+    assertResult(Right(GetResult.Downloaded(dest, 42)))(merged.get(randomSha, dest).runToFuture.futureValue)
   }
 }

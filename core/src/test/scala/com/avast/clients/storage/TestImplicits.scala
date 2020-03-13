@@ -26,9 +26,4 @@ object TestImplicits {
 
     def newInputStream: InputStream = new ByteArrayInputStream(s.getBytes)
   }
-
-  implicit def fkTaskToFuture(implicit ec: ExecutionContext): Task ~> Future = new FunctionK[Task, Future] {
-    override def apply[A](fa: Task[A]): Future[A] = fa.runAsync(Scheduler(ec))
-  }
-
 }

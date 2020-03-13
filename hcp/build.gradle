@@ -10,4 +10,6 @@ dependencies {
     compile "io.circe:circe-parser_2.12:$circeVersion"
     compile "io.circe:circe-generic_2.12:$circeVersion"
     compile "io.circe:circe-generic-extras_2.12:$circeVersion"
+
+    testCompile "io.monix:monix_2.12:$monixVersion"
 }
