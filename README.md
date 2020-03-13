@@ -3,7 +3,6 @@
 Finally-tagless implementation of client for misc. storages represented by backends. Supports backends fallbacks.
 
 Currently supported backends:
-1. [Stor](stor/README.md)
 1. [HCP](hcp/README.md)
 
 ## Dependency
@@ -65,22 +64,4 @@ implicit val scheduler: Scheduler = ???
 val backend: StorageBackend[Task] = ???
 
 val client = StorageClient(backend)
-```
-
-### Using strict types (Future etc.)
-
-The library supports only `F[_]: Effect` by default which makes some common (strict) types like `scala.concurrent.Future` impossible to use.  
-There exists a workaround however:
-
-```scala
-import com.avast.clients.storage.{StorageBackend, StorageClient}
-import monix.eval.Task
-import monix.execution.Scheduler
-
-implicit val scheduler: Scheduler = ???
-implicit val taskToFuture: Task ~> Future = ???
-
-val backend: StorageBackend[Task] = ???
-
-val client: StorageClient[Future] = StorageClient[Task](backend).mapK[Future]
 ```

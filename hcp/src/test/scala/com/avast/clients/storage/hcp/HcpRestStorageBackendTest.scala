@@ -1,22 +1,25 @@
 package com.avast.clients.storage.hcp
 import cats.data.NonEmptyList
-import cats.effect.IO
+import cats.effect.{Blocker, Resource}
 import com.avast.clients.storage.hcp.TestImplicits._
 import com.avast.clients.storage.{GetResult, HeadResult}
 import com.avast.scala.hashes.Sha256
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.http4s.client.blaze.Http1Client
-import org.http4s.dsl.io._
+import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.`Content-Length`
-import org.http4s.server.blaze.BlazeBuilder
-import org.http4s.{HttpService, Uri}
+import org.http4s.implicits._
+import org.http4s.server.blaze.BlazeServerBuilder
+import org.http4s.{HttpRoutes, Uri}
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.time.{Seconds, Span}
 
-class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoSugar {
+import scala.concurrent.duration._
+
+class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoSugar with Http4sDsl[Task] {
   implicit val p: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds))
 
   test("head") {
@@ -25,7 +28,7 @@ class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoS
     val sha = content.sha256
     val shaStr = sha.toString()
 
-    val service = HttpService[IO] {
+    val service = HttpRoutes.of[Task] {
       case request @ HEAD -> urlPath =>
         request
           .as[String]
@@ -44,19 +47,13 @@ class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoS
 
             Ok().map(_.putHeaders(`Content-Length`.unsafeFromLong(fileSize)))
           }
-
     }
 
-    val server = BlazeBuilder[IO].bindHttp(port = 0).mountService(service).start.unsafeRunSync()
-
-    val httpClient = Http1Client[Task]().runAsync.futureValue
-
-    val client = new HcpRestStorageBackend(
-      Uri.fromString(s"http://localhost:${server.address.getPort}/rest").getOrElse(fail()),
-      httpClient
-    )
-
-    val Right(HeadResult.Exists(size)) = client.head(sha).runAsync.futureValue
+    val Right(HeadResult.Exists(size)) = composeTestEnv(service)
+      .use { target =>
+        target.head(sha)
+      }
+      .runSyncUnsafe(10.seconds)
 
     assertResult(fileSize)(size)
   }
@@ -67,7 +64,7 @@ class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoS
     val sha = content.sha256
     val shaStr = sha.toString()
 
-    val service = HttpService[IO] {
+    val service = HttpRoutes.of[Task] {
       case request @ GET -> urlPath =>
         request
           .as[String]
@@ -89,16 +86,11 @@ class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoS
 
     }
 
-    val server = BlazeBuilder[IO].bindHttp(port = 0).mountService(service).start.unsafeRunSync()
-
-    val httpClient = Http1Client[Task]().runAsync.futureValue
-
-    val client = new HcpRestStorageBackend(
-      Uri.fromString(s"http://localhost:${server.address.getPort}/rest").getOrElse(fail()),
-      httpClient
-    )
-
-    val Right(GetResult.Downloaded(file, size)) = client.get(sha).runAsync.futureValue
+    val Right(GetResult.Downloaded(file, size)) = composeTestEnv(service)
+      .use { target =>
+        target.get(sha)
+      }
+      .runSyncUnsafe(10.seconds)
 
     assertResult(sha.toString.toLowerCase)(file.sha256.toLowerCase)
     assertResult(fileSize)(size)
@@ -111,5 +103,19 @@ class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoS
     assertResult {
       NonEmptyList("d0", List("5a", "f9", "d05af9a8494696906e8eec79843ca1e4bf408c280616a121ed92f9e92e2de831"))
     }(HcpRestStorageBackend.splitFileName(sha))
+  }
+
+  private def composeTestEnv(service: HttpRoutes[Task]): Resource[Task, HcpRestStorageBackend[Task]] = {
+    for {
+      server <- BlazeServerBuilder[Task].bindHttp(port = 0).withHttpApp(service.orNotFound).resource
+      httpClient <- BlazeClientBuilder[Task](monix.execution.Scheduler.Implicits.global).resource
+      blocker = Blocker.liftExecutionContext(monix.execution.Scheduler.io())
+      storageBackend = new HcpRestStorageBackend(
+        Uri.unsafeFromString(s"http://localhost:${server.address.getPort}"),
+        "N/A",
+        "N/A",
+        httpClient
+      )(blocker)
+    } yield storageBackend
   }
 }

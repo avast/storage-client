@@ -7,14 +7,15 @@ buildscript {
     dependencies {
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
         classpath 'com.github.maiflai:gradle-scalatest:0.19'
+        classpath "com.github.ben-manes:gradle-versions-plugin:0.27.0"
     }
 }
 
 ext {
-    circeVersion = "0.9.3"
-    metricsVersion = "2.4.4"
-    http4sVersion = "0.18.15"
-    monixVersion = "3.0.0-RC1"
+    circeVersion = "0.13.0"
+    metricsVersion = "2.6.6"
+    http4sVersion = "0.21.1"
+    monixVersion = "3.1.0" // Used only in tests.
 }
 
 subprojects {
@@ -24,6 +25,8 @@ subprojects {
     apply plugin: 'maven'
     apply plugin: 'maven-publish'
     apply plugin: 'com.github.maiflai.scalatest'
+    apply plugin: "com.github.ben-manes.versions"
+
 
     sourceCompatibility = '1.8'
     targetCompatibility = '1.8'
@@ -45,14 +48,14 @@ subprojects {
     dependencies {
         compile 'org.slf4j:jul-to-slf4j:1.7.23'
         compile 'org.slf4j:jcl-over-slf4j:1.7.23'
-        compile 'com.typesafe.scala-logging:scala-logging_2.12:3.9.0'
+        compile 'com.typesafe.scala-logging:scala-logging_2.12:3.9.2'
 
         testCompile "org.http4s:http4s-blaze-server_2.12:$http4sVersion"
 
-        testCompile "ch.qos.logback:logback-classic:1.1.8"
-        testCompile 'junit:junit:4.12'
+        testCompile "ch.qos.logback:logback-classic:1.2.3"
+        testCompile 'junit:junit:4.13'
         testCompile "org.scalatest:scalatest_2.12:3.0.5"
-        testCompile 'org.mockito:mockito-core:2.21.0'
+        testCompile 'org.mockito:mockito-core:3.3.1'
         testCompile "org.pegdown:pegdown:1.6.0"
     }
 
