@@ -5,17 +5,17 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
-        classpath 'com.github.maiflai:gradle-scalatest:0.19'
-        classpath "com.github.ben-manes:gradle-versions-plugin:0.27.0"
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.5'
+        classpath 'com.github.maiflai:gradle-scalatest:0.26'
+        classpath "com.github.ben-manes:gradle-versions-plugin:0.29.0"
     }
 }
 
 ext {
     circeVersion = "0.13.0"
-    metricsVersion = "2.6.6"
-    http4sVersion = "0.21.1"
-    monixVersion = "3.1.0" // Used only in tests.
+    metricsVersion = "2.7.5"
+    http4sVersion = "0.21.7"
+    monixVersion = "3.2.2" // Used only in tests.
 }
 
 subprojects {
@@ -55,7 +55,7 @@ subprojects {
         testCompile "ch.qos.logback:logback-classic:1.2.3"
         testCompile 'junit:junit:4.13'
         testCompile "org.scalatest:scalatest_2.12:3.0.5"
-        testCompile 'org.mockito:mockito-core:3.3.1'
+        testCompile 'org.mockito:mockito-core:3.5.0'
         testCompile "org.pegdown:pegdown:1.6.0"
     }
 
@@ -105,4 +105,3 @@ subprojects {
     }
 
 }
-
