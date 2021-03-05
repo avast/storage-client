@@ -13,7 +13,7 @@ buildscript {
 
 ext {
     circeVersion = "0.13.0"
-    metricsVersion = "2.7.5"
+    metricsVersion = "2.8.5"
     http4sVersion = "0.21.7"
     monixVersion = "3.2.2" // Used only in tests.
 }
