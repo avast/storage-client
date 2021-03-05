@@ -7,15 +7,15 @@ buildscript {
     dependencies {
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.5'
         classpath 'com.github.maiflai:gradle-scalatest:0.30'
-        classpath "com.github.ben-manes:gradle-versions-plugin:0.29.0"
+        classpath "com.github.ben-manes:gradle-versions-plugin:0.36.0"
     }
 }
 
 ext {
     circeVersion = "0.13.0"
-    metricsVersion = "2.7.5"
-    http4sVersion = "0.21.7"
-    monixVersion = "3.2.2" // Used only in tests.
+    metricsVersion = "2.8.5"
+    http4sVersion = "0.21.20"
+    monixVersion = "3.3.0" // Used only in tests.
 }
 
 subprojects {
@@ -48,14 +48,14 @@ subprojects {
     dependencies {
         compile 'org.slf4j:jul-to-slf4j:1.7.23'
         compile 'org.slf4j:jcl-over-slf4j:1.7.23'
-        compile 'com.typesafe.scala-logging:scala-logging_2.12:3.9.2'
+        compile 'com.typesafe.scala-logging:scala-logging_2.13:3.9.2'
 
-        testCompile "org.http4s:http4s-blaze-server_2.12:$http4sVersion"
+        testCompile "org.http4s:http4s-blaze-server_2.13:$http4sVersion"
 
         testCompile "ch.qos.logback:logback-classic:1.2.3"
         testCompile 'junit:junit:4.13'
-        testCompile "org.scalatest:scalatest_2.12:3.0.5"
-        testCompile 'org.mockito:mockito-core:3.5.0'
+        testCompile "org.scalatest:scalatest_2.13:3.0.9"
+        testCompile 'org.mockito:mockito-core:3.8.0'
         testCompile "org.pegdown:pegdown:1.6.0"
     }
 

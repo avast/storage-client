@@ -3,7 +3,7 @@
 ## Dependency
 
 ```groovy
-compile "com.avast.clients.storage:storage-client-hcp_2.12:x.x.x"
+compile "com.avast.clients.storage:storage-client-hcp_2.13:x.x.x"
 ```
 
 ## Usage
