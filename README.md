@@ -10,7 +10,7 @@ Currently supported backends:
 Use dependency from README of selected backend:
 
 ```groovy
-compile "com.avast.clients.storage:storage-client-BACKEND_2.12:x.x.x"
+compile "com.avast.clients.storage:storage-client-BACKEND_2.13:x.x.x"
 ```
 
 ## Usage

@@ -1,15 +1,15 @@
-archivesBaseName = "storage-client-hcp_2.12"
+archivesBaseName = "storage-client-hcp_2.13"
 
 dependencies {
     compile project(":core")
 
-    compile "org.http4s:http4s-dsl_2.12:$http4sVersion"
-    compile "org.http4s:http4s-blaze-client_2.12:$http4sVersion"
+    compile "org.http4s:http4s-dsl_2.13:$http4sVersion"
+    compile "org.http4s:http4s-blaze-client_2.13:$http4sVersion"
 
-    compile "io.circe:circe-core_2.12:$circeVersion"
-    compile "io.circe:circe-parser_2.12:$circeVersion"
-    compile "io.circe:circe-generic_2.12:$circeVersion"
-    compile "io.circe:circe-generic-extras_2.12:$circeVersion"
+    compile "io.circe:circe-core_2.13:$circeVersion"
+    compile "io.circe:circe-parser_2.13:$circeVersion"
+    compile "io.circe:circe-generic_2.13:$circeVersion"
+    compile "io.circe:circe-generic-extras_2.13:$circeVersion"
 
-    testCompile "io.monix:monix_2.12:$monixVersion"
+    testCompile "io.monix:monix_2.13:$monixVersion"
 }
