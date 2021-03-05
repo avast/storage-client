@@ -5,11 +5,11 @@ dependencies {
 
     compile 'com.github.pathikrit:better-files_2.12:3.9.1'
 
-    compile "org.typelevel:cats-core_2.12:2.1.1"
+    compile "org.typelevel:cats-core_2.12:2.4.2"
 
-    compile 'com.typesafe:config:1.4.0'
-    compile "com.github.pureconfig:pureconfig_2.12:0.13.0"
-    compile "com.github.pureconfig:pureconfig-http4s_2.12:0.13.0"
+    compile 'com.typesafe:config:1.4.1'
+    compile "com.github.pureconfig:pureconfig_2.12:0.14.1"
+    compile "com.github.pureconfig:pureconfig-http4s_2.12:0.14.1"
 
     compile "com.avast.metrics:metrics-scala_2.12:$metricsVersion"
 
