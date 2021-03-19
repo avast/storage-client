@@ -1,7 +1,7 @@
 archivesBaseName = "storage-client-core_2.13"
 
 dependencies {
-    compile 'com.avast.hashes:scala-hashes_2.13:2.3.0'
+    compile 'com.avast.hashes:scala-hashes_2.13:2.3.1'
 
     compile 'com.github.pathikrit:better-files_2.13:3.9.1'
 
