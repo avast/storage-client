@@ -1,14 +1,14 @@
 buildscript {
     repositories {
         mavenCentral()
-        jcenter()
     }
-
     dependencies {
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.5'
         classpath 'com.github.maiflai:gradle-scalatest:0.30'
         classpath "com.github.ben-manes:gradle-versions-plugin:0.36.0"
     }
+}
+plugins {
+    id 'io.github.gradle-nexus.publish-plugin' version '1.0.0'
 }
 
 ext {
@@ -18,22 +18,25 @@ ext {
     monixVersion = "3.3.0" // Used only in tests.
 }
 
+nexusPublishing {
+    repositories {
+        sonatype()
+    }
+}
+
 subprojects {
     apply plugin: 'java'
     apply plugin: 'scala'
-    apply plugin: 'com.jfrog.bintray'
-    apply plugin: 'maven'
+    apply plugin: 'java-library'
     apply plugin: 'maven-publish'
+    apply plugin: 'signing'
     apply plugin: 'com.github.maiflai.scalatest'
     apply plugin: "com.github.ben-manes.versions"
 
-
     sourceCompatibility = '1.8'
-    targetCompatibility = '1.8'
 
     repositories {
         mavenCentral()
-        jcenter()
     }
 
     group = 'com.avast.clients.storage'
@@ -41,7 +44,7 @@ subprojects {
 
     jar {
         manifest {
-            attributes 'Implementation-Version': version
+            attributes 'Implementation-Version': archiveVersion
         }
     }
 
@@ -59,48 +62,50 @@ subprojects {
         testCompile "org.pegdown:pegdown:1.6.0"
     }
 
-    task sourceJar(type: Jar) {
-        from sourceSets.main.allSource
-        classifier "sources"
+    java {
+        withJavadocJar()
+        withSourcesJar()
     }
 
-    publishing {
-        publications {
-            MyPublication(MavenPublication) {
-                from components.java
-                groupId project.group
-                version project.version
-                artifact sourceJar
+    afterEvaluate {
+        publishing {
+            publications {
+                mavenJava(MavenPublication) {
+                    from(components.java)
+                    artifactId = archivesBaseName
+                    pom {
+                        name = 'Scala storage client'
+                        description = 'Finally-tagless implementation of client for misc. storages represented by backends. Supports backends fallbacks.'
+                        url = 'https://github.com/avast/storage-client'
+                        licenses {
+                            license {
+                                name = 'Apache License 2.0'
+                                url = 'http://www.apache.org/licenses/LICENSE-2.0'
+                            }
+                        }
+                        developers {
+                            developer {
+                                id = 'jendakol'
+                                name = 'Jenda Kolena'
+                                email = 'jan.kolena@avast.com'
+                            }
+                        }
+                        scm {
+                            connection = 'scm:git:git://github.com/avast/storage-client.git'
+                            developerConnection = 'scm:git:ssh://github.com/avast/storage-client.git'
+                            url = 'https://github.com/avast/storage-client'
+                        }
+                    }
+                }
             }
         }
     }
 
-    artifacts {
-        archives jar
-        archives sourceJar
-    }
-
-    bintray {
-        user = System.getenv('BINTRAY_USER')
-        key = System.getenv('BINTRAY_KEY')
-        publish = true // auto publish
-        configurations = ['archives']
-
-        pkg {
-            repo = 'maven'
-            name = 'storage-client'
-            userOrg = 'avast'
-            desc = 'Scala client for storage services'
-            licenses = ['Apache-2.0']
-            vcsUrl = 'https://github.com/avast/storage-client.git'
-            githubRepo = 'avast/storage-client'
-            websiteUrl = 'https://github.com/avast/storage-client'
-            issueTrackerUrl = 'https://github.com/avast/storage-client/issues'
-            labels = ['stor', 'hcp', 's3', 'client', 'storage', 'scala']
-            version {
-                name = project.version
-                vcsTag = project.version
-            }
+    signing {
+        String base64Key = System.getenv('SIGNING_KEY')
+        if (base64Key) {
+            useInMemoryPgpKeys(new String(Base64.decoder.decode(base64Key)), System.getenv('SIGNING_PASSWORD'))
+            sign publishing.publications
         }
     }
 

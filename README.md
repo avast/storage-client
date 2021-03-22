@@ -1,4 +1,4 @@
-# Scala storage client
+# Scala storage client [![Build](https://github.com/avast/storage-client/actions/workflows/build.yml/badge.svg)](https://github.com/avast/storage-client/actions/workflows/build.yml) [![Version](https://badgen.net/maven/v/maven-central/com.avast.clients.storage/storage-client-core_2.13/)](https://repo1.maven.org/maven2/com/avast/clients/storage/storage-client-core_2.13/)
 
 Finally-tagless implementation of client for misc. storages represented by backends. Supports backends fallbacks.
 

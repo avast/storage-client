@@ -1,9 +1,0 @@
-language: java
-scala:
-- 2.13.5
-jdk:
-- oraclejdk9
-cache:
-  directories:
-    - $HOME/.gradle/wrapper/
-script: ./.travis.sh
