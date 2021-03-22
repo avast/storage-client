@@ -24,6 +24,11 @@ nexusPublishing {
     }
 }
 
+allprojects {
+    group = 'com.avast.clients.storage'
+    version = version == 'unspecified' ? 'DEVELOPER-SNAPSHOT' : version
+}
+
 subprojects {
     apply plugin: 'java'
     apply plugin: 'scala'
@@ -38,9 +43,6 @@ subprojects {
     repositories {
         mavenCentral()
     }
-
-    group = 'com.avast.clients.storage'
-    version = version == 'unspecified' ? 'DEVELOPER-SNAPSHOT' : version
 
     jar {
         manifest {
