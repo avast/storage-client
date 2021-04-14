@@ -1,17 +1,17 @@
 archivesBaseName = "storage-client-core_2.13"
 
 dependencies {
-    compile 'com.avast.hashes:scala-hashes_2.13:2.3.1'
+    api 'com.avast.hashes:scala-hashes_2.13:2.3.1'
 
-    compile 'com.github.pathikrit:better-files_2.13:3.9.1'
+    api 'com.github.pathikrit:better-files_2.13:3.9.1'
 
-    compile "org.typelevel:cats-core_2.13:2.5.0"
+    api "org.typelevel:cats-core_2.13:2.5.0"
 
-    compile 'com.typesafe:config:1.4.1'
-    compile "com.github.pureconfig:pureconfig_2.13:0.14.1"
-    compile "com.github.pureconfig:pureconfig-http4s_2.13:0.14.1"
+    api 'com.typesafe:config:1.4.1'
+    api "com.github.pureconfig:pureconfig_2.13:0.14.1"
+    api "com.github.pureconfig:pureconfig-http4s_2.13:0.14.1"
 
-    compile "com.avast.metrics:metrics-scala_2.13:$metricsVersion"
+    api "com.avast.metrics:metrics-scala_2.13:$metricsVersion"
 
-    testCompile "io.monix:monix_2.13:$monixVersion"
+    testImplementation "io.monix:monix_2.13:$monixVersion"
 }
