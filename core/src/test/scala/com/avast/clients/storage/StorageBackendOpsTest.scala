@@ -6,9 +6,12 @@ import com.avast.clients.storage.TestImplicits._
 import com.avast.scala.hashes.Sha256
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatestplus.junit.JUnitRunner
 
+@RunWith(classOf[JUnitRunner])
 class StorageBackendOpsTest extends FunSuite with ScalaFutures {
   test("withFallbackIfError - fallback not used") {
     val first = new StorageBackend[Task] {

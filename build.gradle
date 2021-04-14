@@ -3,7 +3,6 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.github.maiflai:gradle-scalatest:0.30'
         classpath "com.github.ben-manes:gradle-versions-plugin:0.38.0"
     }
 }
@@ -35,7 +34,6 @@ subprojects {
     apply plugin: 'java-library'
     apply plugin: 'maven-publish'
     apply plugin: 'signing'
-    apply plugin: 'com.github.maiflai.scalatest'
     apply plugin: "com.github.ben-manes.versions"
 
     sourceCompatibility = '1.8'

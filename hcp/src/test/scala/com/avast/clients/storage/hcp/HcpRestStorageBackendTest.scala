@@ -1,4 +1,5 @@
 package com.avast.clients.storage.hcp
+
 import cats.data.NonEmptyList
 import cats.effect.{Blocker, Resource}
 import com.avast.clients.storage.hcp.TestImplicits._
@@ -12,13 +13,16 @@ import org.http4s.headers.`Content-Length`
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.{HttpRoutes, Uri}
+import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.time.{Seconds, Span}
+import org.scalatestplus.junit.JUnitRunner
 
 import scala.concurrent.duration._
 
+@RunWith(classOf[JUnitRunner])
 class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoSugar with Http4sDsl[Task] {
   implicit val p: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds))
 
