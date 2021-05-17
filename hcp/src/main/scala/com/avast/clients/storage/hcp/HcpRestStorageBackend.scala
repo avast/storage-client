@@ -1,11 +1,4 @@
 package com.avast.clients.storage.hcp
-import java.net.{Inet4Address, Inet6Address, InetAddress}
-import java.nio.charset.StandardCharsets
-import java.nio.file.StandardOpenOption
-import java.security.{DigestOutputStream, MessageDigest}
-import java.util.Base64
-import java.util.concurrent.ThreadLocalRandom
-
 import better.files.File
 import cats.data.NonEmptyList
 import cats.effect.implicits._
@@ -17,9 +10,8 @@ import com.avast.scala.hashes
 import com.avast.scala.hashes.Sha256
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import org.http4s.Uri.{Authority, Ipv4Address, Ipv6Address}
-import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.client.{Client, RequestKey}
 import org.http4s.headers.{`Content-Length`, `User-Agent`, AgentProduct}
 import org.http4s.{Method, Request, Response, Status, _}
 import pureconfig._
@@ -27,6 +19,11 @@ import pureconfig.error.ConfigReaderException
 import pureconfig.generic.ProductHint
 import pureconfig.generic.auto._
 
+import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
+import java.nio.file.StandardOpenOption
+import java.security.{DigestOutputStream, MessageDigest}
+import java.util.Base64
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.language.higherKinds
@@ -36,7 +33,6 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
     extends StorageBackend[F]
     with StrictLogging {
 
-  private val baseUrlAuthority = baseUrl.authority.getOrElse(throw ConfigurationException(s"BaseUrl $baseUrl is missing path part"))
   private val authenticationHeader = composeAuthenticationHeader(username, password)
 
   override def head(sha256: Sha256): F[Either[StorageException, HeadResult]] = {
@@ -104,18 +100,7 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
   }
 
   private def prepareRequest(method: Method, relative: Uri): Request[F] = {
-    val hostName = baseUrlAuthority.host.value
-    // Using JVM DNS cache, see: https://javaeesupportpatterns.blogspot.com/2011/03/java-dns-cache-reference-guide.html
-    val addresses = InetAddress.getAllByName(hostName)
-    val address = addresses(ThreadLocalRandom.current().nextInt(addresses.size))
-    val ipHost = address match {
-      case ipv4: Inet4Address => Ipv4Address.unsafeFromString(ipv4.getHostAddress)
-      case ipv6: Inet6Address => Ipv6Address.unsafeFromString(ipv6.getHostAddress)
-    }
-
-    val url = baseUrl.copy(authority = Some(Authority(host = ipHost, port = baseUrlAuthority.port)), path = relative.path)
-
-    Request[F](method, url, headers = Headers.of(Header("Connection", "close"), Header("Host", hostName), authenticationHeader))
+    Request[F](method, baseUrl.copy(path = relative.path), headers = Headers.of(Header("Connection", "close"), authenticationHeader))
   }
 
   private def receiveStreamedFile(response: Response[F],
@@ -249,7 +234,9 @@ case class HcpRestBackendConfiguration(protocol: String,
                                        maxWainQueueLimit: Int,
                                        userAgent: Option[String]) {
 
-  def toBlazeClientBuilder[F[_]: ConcurrentEffect](executionContext: ExecutionContext): BlazeClientBuilder[F] = {
+  def toBlazeClientBuilder[F[_]: ConcurrentEffect](executionContext: ExecutionContext,
+                                                   dnsResolver: RequestKey => Either[Throwable, InetSocketAddress] =
+                                                     BalancingDnsResolver.getAddress): BlazeClientBuilder[F] = {
     BlazeClientBuilder
       .apply[F](executionContext)
       .withResponseHeaderTimeout(responseHeaderTimeout)
@@ -259,6 +246,7 @@ case class HcpRestBackendConfiguration(protocol: String,
       .withMaxConnectionsPerRequestKey(_ => maxConnectionsPerNode)
       .withUserAgentOption(userAgent.map(v => `User-Agent`(AgentProduct(v))))
       .withMaxWaitQueueLimit(maxWainQueueLimit)
+      .withCustomDnsResolver(dnsResolver)
   }
 }
 
