@@ -11,7 +11,7 @@ plugins {
 }
 
 ext {
-    circeVersion = "0.13.0"
+    circeVersion = "0.14.1"
     metricsVersion = "2.8.5"
     http4sVersion = "0.21.22"
     monixVersion = "3.4.0" // Used only in tests.
