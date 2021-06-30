@@ -26,8 +26,9 @@ import java.security.{DigestOutputStream, MessageDigest}
 import java.util.Base64
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
-import scala.language.higherKinds
+
 import scala.util.control.NonFatal
+
 class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: String, password: String, httpClient: Client[F])(
     blocker: Blocker)(implicit F: Async[F])
     extends StorageBackend[F]
@@ -43,13 +44,13 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
     try {
       val request = prepareRequest(Method.HEAD, relativeUrl)
 
-      httpClient.fetch(request) { resp =>
+      httpClient.run(request).use { resp =>
         resp.status match {
           case Status.Ok =>
             `Content-Length`.from(resp.headers) match {
               case Some(`Content-Length`(length)) => F.pure(Right(HeadResult.Exists(length)))
               case None =>
-                resp.bodyAsText.compile.toList.map { body =>
+                resp.bodyText.compile.toList.map { body =>
                   Left(StorageException.InvalidResponseException(resp.status.code, body.mkString, "Missing Content-Length header"))
                 }
             }
@@ -57,7 +58,7 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
             F.pure(Right(HeadResult.NotFound))
 
           case _ =>
-            resp.bodyAsText.compile.toList.map { body =>
+            resp.bodyText.compile.toList.map { body =>
               Left(StorageException.InvalidResponseException(resp.status.code, body.mkString, "Unexpected status"))
             }
         }
@@ -77,13 +78,13 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
       val request = prepareRequest(Method.GET, relativeUrl)
 
       httpClient
-        .fetch(request) { resp =>
+        .run(request).use { resp =>
           resp.status match {
             case Status.Ok => receiveStreamedFile(resp, dest, sha256)
             case Status.NotFound => F.pure(Right(GetResult.NotFound))
 
             case _ =>
-              resp.bodyAsText.compile.toList.map { body =>
+              resp.bodyText.compile.toList.map { body =>
                 Left(StorageException.InvalidResponseException(resp.status.code, body.mkString, "Unexpected status"))
               }
           }

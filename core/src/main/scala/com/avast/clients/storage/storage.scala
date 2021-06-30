@@ -5,8 +5,6 @@ import cats.Monad
 import cats.data.EitherT
 import com.avast.scala.hashes.Sha256
 
-import scala.language.higherKinds
-
 package object storage {
 
   implicit class StorageBackendOps[F[_]: Monad](val backend: StorageBackend[F]) {

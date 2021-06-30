@@ -4,8 +4,6 @@ import better.files.File
 import cats.effect.Effect
 import com.avast.scala.hashes.Sha256
 
-import scala.language.higherKinds
-
 trait StorageClient[F[_]] extends AutoCloseable {
   def head(sha256: Sha256): F[Either[StorageException, HeadResult]]
 
