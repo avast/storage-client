@@ -16,7 +16,7 @@ import org.http4s.{HttpRoutes, Uri}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.time.{Seconds, Span}
 import org.scalatestplus.junit.JUnitRunner
 
@@ -111,7 +111,7 @@ class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoS
 
   private def composeTestEnv(service: HttpRoutes[Task]): Resource[Task, HcpRestStorageBackend[Task]] = {
     for {
-      server <- BlazeServerBuilder[Task].bindHttp(port = 0).withHttpApp(service.orNotFound).resource
+      server <- BlazeServerBuilder[Task](monix.execution.Scheduler.Implicits.global).bindHttp(port = 0).withHttpApp(service.orNotFound).resource
       httpClient <- BlazeClientBuilder[Task](monix.execution.Scheduler.Implicits.global).resource
       blocker = Blocker.liftExecutionContext(monix.execution.Scheduler.io())
       storageBackend = new HcpRestStorageBackend(

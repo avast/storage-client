@@ -9,7 +9,7 @@ import scala.util.Random
 
 /* Utils for testing. */
 object TestImplicits {
-  def randomSha: Sha256 = Sha256(Stream.continually(Random.nextInt(9)).take(64).mkString)
+  def randomSha: Sha256 = Sha256(LazyList.continually(Random.nextInt(9)).take(64).mkString)
 
   def randomString(length: Int = 100): String = Random.alphanumeric.take(length).mkString
 

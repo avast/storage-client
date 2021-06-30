@@ -6,10 +6,5 @@ dependencies {
     api "org.http4s:http4s-dsl_2.13:$http4sVersion"
     api "org.http4s:http4s-blaze-client_2.13:$http4sVersion"
 
-    api "io.circe:circe-core_2.13:$circeVersion"
-    api "io.circe:circe-parser_2.13:$circeVersion"
-    api "io.circe:circe-generic_2.13:$circeVersion"
-    api "io.circe:circe-generic-extras_2.13:$circeVersion"
-
     testImplementation "io.monix:monix_2.13:$monixVersion"
 }
