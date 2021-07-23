@@ -6,10 +6,10 @@ dependencies {
     api 'com.github.pathikrit:better-files_2.13:3.9.1'
 
     api "org.typelevel:cats-core_2.13:2.6.1"
+    api "org.typelevel:cats-effect_2.13:2.5.1"
 
     api 'com.typesafe:config:1.4.1'
     api "com.github.pureconfig:pureconfig_2.13:0.16.0"
-    api "com.github.pureconfig:pureconfig-http4s_2.13:0.15.0"
 
     api "com.avast.metrics:metrics-scala_2.13:$metricsVersion"
 
