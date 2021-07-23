@@ -7,11 +7,11 @@ import com.avast.clients.storage.{GetResult, HeadResult}
 import com.avast.scala.hashes.Sha256
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.`Content-Length`
 import org.http4s.implicits._
-import org.http4s.server.blaze.BlazeServerBuilder
+import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.{HttpRoutes, Uri}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
@@ -45,7 +45,7 @@ class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoS
                 shaStr.substring(4, 6),
                 shaStr,
               )
-            }(urlPath.toList)
+            }(urlPath.segments.map(_.encoded).toList)
 
             assertResult(0)(body.length)
 
@@ -81,7 +81,7 @@ class HcpRestStorageBackendTest extends FunSuite with ScalaFutures with MockitoS
                 shaStr.substring(4, 6),
                 shaStr,
               )
-            }(urlPath.toList)
+            }(urlPath.segments.map(_.encoded).toList)
 
             assertResult(0)(body.length)
 

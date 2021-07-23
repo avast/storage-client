@@ -10,10 +10,13 @@ import com.avast.scala.hashes
 import com.avast.scala.hashes.Sha256
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.Uri.Path
+import org.http4s.Uri.Path.Segment
+import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.client.{Client, RequestKey}
-import org.http4s.headers.{`Content-Length`, `User-Agent`, AgentProduct}
+import org.http4s.headers.{`Content-Length`, `User-Agent`}
 import org.http4s.{Method, Request, Response, Status, _}
+import org.typelevel.ci.CIString
 import pureconfig._
 import pureconfig.error.ConfigReaderException
 import pureconfig.generic.ProductHint
@@ -26,7 +29,6 @@ import java.security.{DigestOutputStream, MessageDigest}
 import java.util.Base64
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
-
 import scala.util.control.NonFatal
 
 class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: String, password: String, httpClient: Client[F])(
@@ -47,7 +49,7 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
       httpClient.run(request).use { resp =>
         resp.status match {
           case Status.Ok =>
-            `Content-Length`.from(resp.headers) match {
+            resp.headers.get[`Content-Length`] match {
               case Some(`Content-Length`(length)) => F.pure(Right(HeadResult.Exists(length)))
               case None =>
                 resp.bodyText.compile.toList.map { body =>
@@ -101,7 +103,7 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
   }
 
   private def prepareRequest(method: Method, relative: Uri): Request[F] = {
-    Request[F](method, baseUrl.copy(path = relative.path), headers = Headers.of(Header("Connection", "close"), authenticationHeader))
+    Request[F](method, baseUrl.copy(path = relative.path), headers = Headers(Header.Raw(CIString("Connection"), "close"), authenticationHeader))
   }
 
   private def receiveStreamedFile(response: Response[F],
@@ -168,7 +170,7 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
 }
 
 object HcpRestStorageBackend {
-  private val RelativeUrlBase = Uri(path = "/rest")
+  private val RelativeUrlBase = Uri(path = Path(Vector(Segment("rest")), absolute = true))
 
   def fromConfig[F[_]: ConcurrentEffect: ContextShift](config: Config, blocker: Blocker)(
       implicit ec: ExecutionContext): Either[ConfigurationException, Resource[F, HcpRestStorageBackend[F]]] = {
@@ -217,7 +219,7 @@ object HcpRestStorageBackend {
       }
     }
 
-    Header("Authorization", s"HCP $encodedUserName:$encodedPassword")
+    Header.Raw(CIString("Authorization"), s"HCP $encodedUserName:$encodedPassword")
   }
 }
 
@@ -245,7 +247,7 @@ case class HcpRestBackendConfiguration(protocol: String,
       .withIdleTimeout(idleTimeout)
       .withMaxTotalConnections(maxConnections)
       .withMaxConnectionsPerRequestKey(_ => maxConnectionsPerNode)
-      .withUserAgentOption(userAgent.map(v => `User-Agent`(AgentProduct(v))))
+      .withUserAgentOption(userAgent.map(v => `User-Agent`(ProductId(v))))
       .withMaxWaitQueueLimit(maxWainQueueLimit)
       .withCustomDnsResolver(dnsResolver)
   }
