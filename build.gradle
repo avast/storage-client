@@ -57,7 +57,7 @@ subprojects {
         testImplementation "ch.qos.logback:logback-classic:1.2.11"
         testImplementation 'junit:junit:4.13.2'
         testImplementation "org.scalatest:scalatest_2.13:3.0.9"
-        testImplementation 'org.mockito:mockito-core:4.5.1'
+        testImplementation 'org.mockito:mockito-core:4.6.0'
         testImplementation "org.pegdown:pegdown:1.6.0"
     }
 
