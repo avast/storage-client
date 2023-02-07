@@ -3,7 +3,7 @@ archivesBaseName = "storage-client-core_2.13"
 dependencies {
     api 'com.avast.hashes:scala-hashes_2.13:4.2.0'
 
-    api 'com.github.pathikrit:better-files_2.13:3.9.1'
+    api 'com.github.pathikrit:better-files_2.13:3.9.2'
 
     api "org.typelevel:cats-core_2.13:2.9.0"
     api "org.typelevel:cats-effect_2.13:2.5.5"
