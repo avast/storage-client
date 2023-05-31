@@ -1,0 +1,9 @@
+archivesBaseName = "storage-client-gcs_2.13"
+
+dependencies {
+    api project(":core")
+
+    implementation "com.google.cloud:google-cloud-storage:$gcsVersion"
+
+    testImplementation "io.monix:monix_2.13:$monixVersion"
+}

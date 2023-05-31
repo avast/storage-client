@@ -3,7 +3,8 @@
 Finally-tagless implementation of client for misc. storages represented by backends. Supports backends fallbacks.
 
 Currently supported backends:
-1. [HCP](hcp/README.md)
+1. [HCP (Hitachi Content Platform)](hcp/README.md)
+2. [GCS (Google Cloud Storage)](gcs/README.md)
 
 ## Dependency
 
