@@ -86,7 +86,7 @@ class GcsStorageBackendTest extends FunSuite with ScalaFutures with MockitoSugar
 
   test("composeObjectPath") {
     val sha = Sha256("d05af9a8494696906e8eec79843ca1e4bf408c280616a121ed92f9e92e2de831")
-    assertResult("d0/5a/f9/d05af9a8494696906e8eec79843ca1e4bf408c280616a121ed92f9e92e2de831")(GcsStorageBackend.composeObjectPath(sha))
+    assertResult("d0/5a/f9/d05af9a8494696906e8eec79843ca1e4bf408c280616a121ed92f9e92e2de831")(GcsStorageBackend.composeBlobPath(sha))
   }
 
   private def composeTestBackend(bucket: Bucket): GcsStorageBackend[Task] = {

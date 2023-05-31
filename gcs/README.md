@@ -22,14 +22,15 @@ import com.avast.clients.storage.gcs.GcsStorageBackend
 import com.typesafe.config.Config
 import monix.eval.Task
 import monix.execution.Scheduler
+import cats.effect.Blocker
 
 implicit val scheduler: Scheduler = ???
+val blocker: Blocker = ???
 val config: Config = ???
 
-def initClient: Task[GcsStorageBackend[Task]] = {
-  GcsStorageBackend.fromConfig[Task](config) match {
-    case Right(cl) => cl
-    case Left(err) => Task.raiseError(err)
+GcsStorageBackend.fromConfig[Task](config, blocker).map{ resource =>
+  resource.use { client =>
+    client.get(sha256, destinationFile)
   }
 }
 ```
