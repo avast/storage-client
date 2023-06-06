@@ -1,5 +1,15 @@
 {
   "extends": [
     "config:base"
+  ],
+  "packageRules": [
+    {
+      "matchPackagePrefixes": ["org.http4s:http4s-"],
+      "allowedVersions": "/^0\\.22\\.[0-9]+$/"
+    },
+    {
+      "matchPackagePrefixes": ["org.typelevel:cats-effect"],
+      "allowedVersions": "/^2\\.[0-9]+\\.[0-9]+$/"
+    }
   ]
 }
