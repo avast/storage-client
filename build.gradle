@@ -13,7 +13,7 @@ plugins {
 ext {
     metricsVersion = "2.10.4"
     http4sVersion = "0.22.12"
-    gcsVersion = "2.22.2"
+    gcsVersion = "2.22.3"
     monixVersion = "3.4.1" // Used only in tests.
 }
 
