@@ -18,7 +18,8 @@ import pureconfig.generic.ProductHint
 import pureconfig.generic.auto._
 import pureconfig.{CamelCase, ConfigFieldMapping}
 
-import java.io.FileInputStream
+import java.io.{ByteArrayInputStream, FileInputStream}
+import java.nio.charset.StandardCharsets
 import java.nio.file.StandardOpenOption
 import java.security.{DigestOutputStream, MessageDigest}
 
@@ -158,10 +159,20 @@ object GcsStorageBackend {
       blocker.delay {
         Either
           .catchNonFatal {
-            val builder = conf.jsonKeyPath match {
-              case Some(jsonKeyPath) =>
+            val credentialsFileContent = conf.credentialsFile
+              .map { credentialsFilePath =>
+                new FileInputStream(credentialsFilePath)
+              }
+              .orElse {
+                sys.env.get("GOOGLE_APPLICATION_CREDENTIALS_RAW").map { credentialFileRaw =>
+                  new ByteArrayInputStream(credentialFileRaw.getBytes(StandardCharsets.UTF_8))
+                }
+              }
+
+            val builder = credentialsFileContent match {
+              case Some(inputStream) =>
                 StorageOptions.newBuilder
-                  .setCredentials(ServiceAccountCredentials.fromStream(new FileInputStream(jsonKeyPath)))
+                  .setCredentials(ServiceAccountCredentials.fromStream(inputStream))
               case None =>
                 StorageOptions.getDefaultInstance.toBuilder
             }
@@ -206,7 +217,7 @@ object GcsStorageBackend {
   }
 }
 
-case class GcsBackendConfiguration(projectId: String, bucketName: String, jsonKeyPath: Option[String] = None)
+case class GcsBackendConfiguration(projectId: String, bucketName: String, credentialsFile: Option[String] = None)
 
 object GcsBackendConfiguration {
   // configure pureconfig:
