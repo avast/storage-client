@@ -1,7 +1,6 @@
 package com.avast.clients.storage.gcs
 
 import better.files.File
-import cats.data.EitherT
 import cats.effect.implicits.catsEffectSyntaxBracket
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 import cats.syntax.all._
@@ -10,7 +9,7 @@ import com.avast.clients.storage.{ConfigurationException, GetResult, HeadResult,
 import com.avast.scala.hashes.Sha256
 import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.cloud.ServiceOptions
-import com.google.cloud.storage.{Blob, Bucket, Storage, StorageOptions, StorageException => GcStorageException}
+import com.google.cloud.storage.{Blob, BlobId, Storage, StorageOptions, StorageException => GcStorageException}
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
 import pureconfig.error.ConfigReaderException
@@ -23,7 +22,9 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.StandardOpenOption
 import java.security.{DigestOutputStream, MessageDigest}
 
-class GcsStorageBackend[F[_]: Sync: ContextShift](bucket: Bucket)(blocker: Blocker) extends StorageBackend[F] with StrictLogging {
+class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucketName: String)(blocker: Blocker)
+    extends StorageBackend[F]
+    with StrictLogging {
   private val FileStreamOpenOptions = Seq(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 
   override def head(sha256: Sha256): F[Either[StorageException, HeadResult]] = {
@@ -74,7 +75,7 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](bucket: Bucket)(blocker: Block
     for {
       objectPath <- Sync[F].delay(composeBlobPath(sha256))
       result <- blocker.delay {
-        Option(bucket.get(objectPath))
+        Option(storageClient.get(BlobId.of(bucketName, objectPath)))
       }
     } yield result
   }
@@ -117,34 +118,28 @@ object GcsStorageBackend {
   private val DefaultConfig = ConfigFactory.defaultReference().getConfig("gcsBackendDefaults")
 
   def fromConfig[F[_]: Sync: ContextShift](config: Config,
-                                           blocker: Blocker): EitherT[F, ConfigurationException, Resource[F, GcsStorageBackend[F]]] = {
+                                           blocker: Blocker): Either[ConfigurationException, Resource[F, GcsStorageBackend[F]]] = {
 
-    def composeConfig: EitherT[F, ConfigurationException, GcsBackendConfiguration] = EitherT {
-      Sync[F].delay {
-        pureconfig.ConfigSource
-          .fromConfig(config.withFallback(DefaultConfig))
-          .load[GcsBackendConfiguration]
-          .leftMap { failures =>
-            ConfigurationException("Could not load config", new ConfigReaderException[GcsBackendConfiguration](failures))
-          }
-      }
+    def composeConfig: Either[ConfigurationException, GcsBackendConfiguration] = {
+      pureconfig.ConfigSource
+        .fromConfig(config.withFallback(DefaultConfig))
+        .load[GcsBackendConfiguration]
+        .leftMap { failures =>
+          ConfigurationException("Could not load config", new ConfigReaderException[GcsBackendConfiguration](failures))
+        }
     }
 
-    {
-      for {
-        conf <- composeConfig
-        storageClient <- prepareStorageClient(conf, blocker)
-        bucket <- getBucket(conf, storageClient, blocker)
-      } yield (storageClient, bucket)
-    }.map {
-      case (storage, bucket) =>
-        Resource
-          .fromAutoCloseable {
-            Sync[F].pure(storage)
-          }
-          .map { _ =>
-            new GcsStorageBackend[F](bucket)(blocker)
-          }
+    for {
+      conf <- composeConfig
+      storageClient <- prepareStorageClient(conf, blocker)
+    } yield {
+      Resource
+        .fromAutoCloseable {
+          Sync[F].pure(storageClient)
+        }
+        .map { storageClient =>
+          new GcsStorageBackend[F](storageClient, conf.bucketName)(blocker)
+        }
     }
   }
 
@@ -154,66 +149,36 @@ object GcsStorageBackend {
   }
 
   def prepareStorageClient[F[_]: Sync: ContextShift](conf: GcsBackendConfiguration,
-                                                     blocker: Blocker): EitherT[F, ConfigurationException, Storage] = {
-    EitherT {
-      blocker.delay {
-        Either
-          .catchNonFatal {
-            val credentialsFileContent = conf.credentialsFile
-              .map { credentialsFilePath =>
-                new FileInputStream(credentialsFilePath)
-              }
-              .orElse {
-                sys.env.get("GOOGLE_APPLICATION_CREDENTIALS_RAW").map { credentialFileRaw =>
-                  new ByteArrayInputStream(credentialFileRaw.getBytes(StandardCharsets.UTF_8))
-                }
-              }
-
-            val builder = credentialsFileContent match {
-              case Some(inputStream) =>
-                StorageOptions.newBuilder
-                  .setCredentials(ServiceAccountCredentials.fromStream(inputStream))
-              case None =>
-                StorageOptions.getDefaultInstance.toBuilder
+                                                     blocker: Blocker): Either[ConfigurationException, Storage] = {
+    Either
+      .catchNonFatal {
+        val credentialsFileContent = conf.credentialsFile
+          .map { credentialsFilePath =>
+            new FileInputStream(credentialsFilePath)
+          }
+          .orElse {
+            sys.env.get("GOOGLE_APPLICATION_CREDENTIALS_RAW").map { credentialFileRaw =>
+              new ByteArrayInputStream(credentialFileRaw.getBytes(StandardCharsets.UTF_8))
             }
-
-            builder
-              .setProjectId(conf.projectId)
-              .setRetrySettings(ServiceOptions.getNoRetrySettings)
-
-            builder.build.getService
           }
-          .leftMap { e =>
-            ConfigurationException("Could not create GCS client", e)
-          }
+
+        val builder = credentialsFileContent match {
+          case Some(inputStream) =>
+            StorageOptions.newBuilder
+              .setCredentials(ServiceAccountCredentials.fromStream(inputStream))
+          case None =>
+            StorageOptions.getDefaultInstance.toBuilder
+        }
+
+        builder
+          .setProjectId(conf.projectId)
+          .setRetrySettings(ServiceOptions.getNoRetrySettings)
+
+        builder.build.getService
       }
-    }
-  }
-
-  def getBucket[F[_]: Sync: ContextShift](conf: GcsBackendConfiguration,
-                                          storageClient: Storage,
-                                          blocker: Blocker): EitherT[F, ConfigurationException, Bucket] = {
-    EitherT {
-      blocker
-        .delay {
-          Either
-            .catchNonFatal {
-              Option(storageClient.get(conf.bucketName, Storage.BucketGetOption.userProject(conf.projectId)))
-            }
-        }
-        .map {
-          _.leftMap { e =>
-            ConfigurationException(s"Attempt to get bucket ${conf.bucketName} failed", e)
-          }.flatMap {
-            case Some(bucket) =>
-              Right(bucket)
-            case None =>
-              Left {
-                ConfigurationException(s"Bucket ${conf.bucketName} does not exist")
-              }
-          }
-        }
-    }
+      .leftMap { e =>
+        ConfigurationException("Could not create GCS client", e)
+      }
   }
 }
 
