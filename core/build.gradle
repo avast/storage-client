@@ -13,5 +13,7 @@ dependencies {
 
     api "com.avast.metrics:metrics-scala_2.13:$metricsVersion"
 
+    implementation "com.github.luben:zstd-jni:$zstdVersion"
+
     testImplementation "io.monix:monix_2.13:$monixVersion"
 }

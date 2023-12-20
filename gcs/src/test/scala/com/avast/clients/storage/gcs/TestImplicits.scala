@@ -15,4 +15,11 @@ object TestImplicits {
       Sha256(digest.digest(s.getBytes))
     }
   }
+
+  implicit class BytesOps(val bytes: Array[Byte]) extends AnyVal {
+    def sha256: Sha256 = {
+      val digest = MessageDigest.getInstance("SHA-256")
+      Sha256(digest.digest(bytes))
+    }
+  }
 }
