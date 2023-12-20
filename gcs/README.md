@@ -25,6 +25,12 @@ GCS backends supports multiple ways of authentication:
   * Reading credential file from default paths (see https://cloud.google.com/docs/authentication/application-default-credentials#personal)
   * For all options see https://cloud.google.com/docs/authentication/provide-credentials-adc#how-to 
 
+### Object decompression
+
+GCS backend supports decompression of objects. The decision whether to decompress object or not is based on the `comp-type` header in the object's metadata. 
+If the header is present and contains `zstd` value, the object is decompressed on the fly. Otherwise the object is downloaded as is.
+
+The only supported compression algorithm is currently `zstd`.
 
 ### Client initialization
 

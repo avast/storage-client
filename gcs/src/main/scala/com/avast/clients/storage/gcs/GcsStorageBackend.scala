@@ -4,6 +4,7 @@ import better.files.File
 import cats.effect.implicits.catsEffectSyntaxBracket
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 import cats.syntax.all._
+import com.avast.clients.storage.compression.ZstdDecompressOutputStream
 import com.avast.clients.storage.gcs.GcsStorageBackend.composeBlobPath
 import com.avast.clients.storage.{ConfigurationException, GetResult, HeadResult, StorageBackend, StorageException}
 import com.avast.scala.hashes.Sha256
@@ -17,7 +18,7 @@ import pureconfig.generic.ProductHint
 import pureconfig.generic.auto._
 import pureconfig.{CamelCase, ConfigFieldMapping}
 
-import java.io.{ByteArrayInputStream, FileInputStream}
+import java.io.{ByteArrayInputStream, FileInputStream, OutputStream}
 import java.nio.charset.StandardCharsets
 import java.nio.file.StandardOpenOption
 import java.security.{DigestOutputStream, MessageDigest}
@@ -34,7 +35,12 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
         blob <- getBlob(sha256)
         result = blob match {
           case Some(blob) =>
-            HeadResult.Exists(blob.getSize)
+            blob.getMetadata.get(GcsStorageBackend.OriginalSizeHeader) match {
+              case null =>
+                HeadResult.Exists(blob.getSize)
+              case originalSize =>
+                HeadResult.Exists(originalSize.toLong)
+            }
           case None =>
             HeadResult.NotFound
         }
@@ -81,19 +87,24 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
   }
 
   private def receiveStreamedFile(blob: Blob, destination: File, expectedHash: Sha256): F[Either[StorageException, GetResult]] = {
+    def getCompressionType: Option[String] = {
+      Option(blob.getMetadata.get(GcsStorageBackend.CompressionTypeHeader)).map(_.toLowerCase)
+    }
+
     Sync[F].delay(logger.debug(s"Downloading streamed data to $destination")) >>
       blocker
         .delay(destination.newOutputStream(FileStreamOpenOptions))
         .bracket { fileStream =>
-          Sync[F]
-            .delay(new DigestOutputStream(fileStream, MessageDigest.getInstance("SHA-256")))
-            .bracket { stream =>
-              blocker.delay(blob.downloadTo(stream)).flatMap { _ =>
-                Sync[F].delay {
-                  (blob.getSize, Sha256(stream.getMessageDigest.digest))
-                }
+          getCompressionType match {
+            case None =>
+              receiveRawStream(blob, fileStream)
+            case Some("zstd") =>
+              receiveZstdStream(blob, fileStream)
+            case Some(unknownCompressionType) =>
+              Sync[F].raiseError[(Long, Sha256)] {
+                new NotImplementedError(s"Unknown compression type $unknownCompressionType")
               }
-            }(stream => blocker.delay(stream.close()))
+          }
         }(fileStream => blocker.delay(fileStream.close()))
         .map[Either[StorageException, GetResult]] {
           case (size, hash) =>
@@ -109,6 +120,26 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
         }
   }
 
+  private def receiveRawStream(blob: Blob, targetStream: OutputStream): F[(Long, Sha256)] = {
+    Sync[F]
+      .delay(new DigestOutputStream(targetStream, MessageDigest.getInstance("SHA-256")))
+      .bracket { hashingStream =>
+        val countingStream = new GcsStorageBackend.CountingOutputStream(hashingStream)
+        blocker.delay(blob.downloadTo(countingStream)).flatMap { _ =>
+          Sync[F].delay {
+            (countingStream.length, Sha256(hashingStream.getMessageDigest.digest))
+          }
+        }
+      }(hashingStream => blocker.delay(hashingStream.close()))
+  }
+
+  private def receiveZstdStream(blob: Blob, targetStream: OutputStream): F[(Long, Sha256)] = {
+    Sync[F]
+      .delay(new ZstdDecompressOutputStream(targetStream))
+      .bracket { decompressionStream =>
+        receiveRawStream(blob, decompressionStream)
+      }(hashingStream => blocker.delay(hashingStream.close()))
+  }
   override def close(): Unit = {
     ()
   }
@@ -116,6 +147,9 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
 
 object GcsStorageBackend {
   private val DefaultConfig = ConfigFactory.defaultReference().getConfig("gcsBackendDefaults")
+
+  private val CompressionTypeHeader = "comp-type"
+  private val OriginalSizeHeader = "original-size"
 
   def fromConfig[F[_]: Sync: ContextShift](config: Config,
                                            blocker: Blocker): Either[ConfigurationException, Resource[F, GcsStorageBackend[F]]] = {
@@ -146,6 +180,35 @@ object GcsStorageBackend {
   private[gcs] def composeBlobPath(sha256: Sha256): String = {
     val sha256Hex = sha256.toHexString
     String.join("/", sha256Hex.substring(0, 2), sha256Hex.substring(2, 4), sha256Hex.substring(4, 6), sha256Hex)
+  }
+
+  private[gcs] class CountingOutputStream(target: OutputStream) extends OutputStream {
+    private var count: Long = 0
+
+    def length: Long = count
+
+    override def write(b: Int): Unit = {
+      target.write(b)
+      count += 1
+    }
+
+    override def write(b: Array[Byte]): Unit = {
+      target.write(b)
+      count += b.length
+    }
+
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+      target.write(b, off, len)
+      count += len
+    }
+
+    override def flush(): Unit = {
+      target.flush()
+    }
+
+    override def close(): Unit = {
+      target.close()
+    }
   }
 
   def prepareStorageClient[F[_]: Sync: ContextShift](conf: GcsBackendConfiguration,
