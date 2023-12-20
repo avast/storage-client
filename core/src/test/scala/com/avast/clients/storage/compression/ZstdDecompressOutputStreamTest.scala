@@ -17,7 +17,7 @@ class ZstdDecompressOutputStreamTest extends FunSuite {
   }
 
   private def generateData(size: Int): Array[Byte] = {
-    1.to(size).map(i => (i % 256).toByte).toArray
+    1.to(size).map(i => (i % 256).toByte).toArray // generates compressible data, random data wouldn't compress well
   }
 
   test("decompress zstd stream") {

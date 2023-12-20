@@ -18,7 +18,7 @@ class ZstdDecompressOutputStream(outputStream: OutputStream) extends OutputStrea
       throw new IllegalStateException("Stream is closed")
     }
 
-    val inputBuffer = ByteBuffer.allocateDirect(chunk.length)
+    val inputBuffer = ByteBuffer.allocateDirect(chunk.length) // ByteBuffer.wrap(chunk) does not work, we need direct buffer
     inputBuffer.put(chunk)
     inputBuffer.rewind()
 
