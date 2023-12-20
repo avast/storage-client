@@ -9,7 +9,9 @@ import java.nio.channels.Channels
 class ZstdDecompressOutputStream(outputStream: OutputStream) extends OutputStream {
   private val decompressCtx = new ZstdDecompressCtx()
   private val outputChannel = Channels.newChannel(outputStream)
-  private val closed = false
+  private val outputBuffer = ByteBuffer.allocateDirect(ZstdInputStream.recommendedDOutSize().toInt)
+
+  private var closed = false
 
   override def write(chunk: Array[Byte]): Unit = {
     if (closed) {
@@ -17,12 +19,12 @@ class ZstdDecompressOutputStream(outputStream: OutputStream) extends OutputStrea
     }
 
     val inputBuffer = ByteBuffer.allocateDirect(chunk.length)
-    val outputBuffer = ByteBuffer.allocateDirect(ZstdInputStream.recommendedDOutSize().toInt)
-
     inputBuffer.put(chunk)
-    inputBuffer.flip()
+    inputBuffer.rewind()
 
     while (inputBuffer.hasRemaining) {
+      outputBuffer.clear()
+
       decompressCtx.decompressDirectByteBufferStream(outputBuffer, inputBuffer)
 
       outputBuffer.flip()
@@ -30,8 +32,6 @@ class ZstdDecompressOutputStream(outputStream: OutputStream) extends OutputStrea
       while (outputBuffer.hasRemaining) {
         outputChannel.write(outputBuffer)
       }
-
-      outputBuffer.clear()
     }
   }
 
@@ -45,7 +45,9 @@ class ZstdDecompressOutputStream(outputStream: OutputStream) extends OutputStrea
 
   override def close(): Unit = {
     if (!closed) {
+      closed = true
       decompressCtx.close()
+      outputBuffer.clear()
       outputChannel.close()
     }
   }

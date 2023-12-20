@@ -6,4 +6,5 @@ dependencies {
     implementation "com.google.cloud:google-cloud-storage:$gcsVersion"
 
     testImplementation "io.monix:monix_2.13:$monixVersion"
+    testImplementation "com.github.luben:zstd-jni:$zstdVersion"
 }

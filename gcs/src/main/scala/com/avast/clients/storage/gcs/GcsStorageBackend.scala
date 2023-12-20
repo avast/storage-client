@@ -87,24 +87,11 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
   }
 
   private def receiveStreamedFile(blob: Blob, destination: File, expectedHash: Sha256): F[Either[StorageException, GetResult]] = {
-    def getCompressionType: Option[String] = {
-      Option(blob.getMetadata.get(GcsStorageBackend.CompressionTypeHeader)).map(_.toLowerCase)
-    }
-
     Sync[F].delay(logger.debug(s"Downloading streamed data to $destination")) >>
       blocker
         .delay(destination.newOutputStream(FileStreamOpenOptions))
         .bracket { fileStream =>
-          getCompressionType match {
-            case None =>
-              receiveRawStream(blob, fileStream)
-            case Some("zstd") =>
-              receiveZstdStream(blob, fileStream)
-            case Some(unknownCompressionType) =>
-              Sync[F].raiseError[(Long, Sha256)] {
-                new NotImplementedError(s"Unknown compression type $unknownCompressionType")
-              }
-          }
+          downloadBlobToFile(blob, fileStream)
         }(fileStream => blocker.delay(fileStream.close()))
         .map[Either[StorageException, GetResult]] {
           case (size, hash) =>
@@ -120,26 +107,53 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
         }
   }
 
-  private def receiveRawStream(blob: Blob, targetStream: OutputStream): F[(Long, Sha256)] = {
+  private def downloadBlobToFile(blob: Blob, fileStream: OutputStream): F[(Long, Sha256)] = {
+    def getCompressionType: Option[String] = {
+      Option(blob.getMetadata.get(GcsStorageBackend.CompressionTypeHeader)).map(_.toLowerCase)
+    }
+
     Sync[F]
-      .delay(new DigestOutputStream(targetStream, MessageDigest.getInstance("SHA-256")))
-      .bracket { hashingStream =>
-        val countingStream = new GcsStorageBackend.CountingOutputStream(hashingStream)
-        blocker.delay(blob.downloadTo(countingStream)).flatMap { _ =>
+      .delay {
+        val countingStream = new GcsStorageBackend.CountingOutputStream(fileStream)
+        val hashingStream = new DigestOutputStream(countingStream, MessageDigest.getInstance("SHA-256"))
+        (countingStream, hashingStream)
+      }
+      .bracket {
+        case (countingStream, hashingStream) => {
+          getCompressionType match {
+            case None =>
+              downloadBlobToStream(blob, hashingStream)
+            case Some("zstd") =>
+              decodeZstdStream(blob, hashingStream)
+            case Some(unknown) =>
+              throw new IllegalArgumentException(s"Unknown compression type $unknown")
+          }
+        }.flatMap { _ =>
           Sync[F].delay {
             (countingStream.length, Sha256(hashingStream.getMessageDigest.digest))
           }
         }
-      }(hashingStream => blocker.delay(hashingStream.close()))
+      } {
+        case (hashingStream, countingStream) =>
+          Sync[F].delay {
+            hashingStream.close()
+            countingStream.close()
+          }
+      }
   }
 
-  private def receiveZstdStream(blob: Blob, targetStream: OutputStream): F[(Long, Sha256)] = {
+  private def decodeZstdStream(blob: Blob, targetStream: DigestOutputStream): F[Unit] = {
     Sync[F]
       .delay(new ZstdDecompressOutputStream(targetStream))
       .bracket { decompressionStream =>
-        receiveRawStream(blob, decompressionStream)
-      }(hashingStream => blocker.delay(hashingStream.close()))
+        downloadBlobToStream(blob, decompressionStream)
+      }(decompressionStream => Sync[F].delay(decompressionStream.close()))
   }
+
+  private def downloadBlobToStream(blob: Blob, targetStream: OutputStream): F[Unit] = {
+    blocker.delay(blob.downloadTo(targetStream))
+  }
+
   override def close(): Unit = {
     ()
   }
@@ -148,8 +162,8 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
 object GcsStorageBackend {
   private val DefaultConfig = ConfigFactory.defaultReference().getConfig("gcsBackendDefaults")
 
-  private val CompressionTypeHeader = "comp-type"
-  private val OriginalSizeHeader = "original-size"
+  private[gcs] val CompressionTypeHeader = "comp-type"
+  private[gcs] val OriginalSizeHeader = "original-size"
 
   def fromConfig[F[_]: Sync: ContextShift](config: Config,
                                            blocker: Blocker): Either[ConfigurationException, Resource[F, GcsStorageBackend[F]]] = {
