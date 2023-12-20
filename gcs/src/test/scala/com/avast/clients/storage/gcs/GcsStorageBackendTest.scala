@@ -32,6 +32,7 @@ class GcsStorageBackendTest extends FunSuite with ScalaFutures with MockitoSugar
 
     val blob = mock[Blob]
     when(blob.getSize).thenReturn(fileSize.toLong)
+    when(blob.getMetadata).thenReturn(null)
 
     val storageClient = mock[Storage]
     when(storageClient.get(any[BlobId]())).thenAnswer { call =>
@@ -100,6 +101,7 @@ class GcsStorageBackendTest extends FunSuite with ScalaFutures with MockitoSugar
     val bucketName = "bucket-tst"
 
     val blob = mock[Blob]
+    when(blob.getMetadata).thenReturn(null)
     when(blob.downloadTo(any[OutputStream]())).thenAnswer { call =>
       val outputStream = call.getArgument[OutputStream](0)
       outputStream.write(content.getBytes())

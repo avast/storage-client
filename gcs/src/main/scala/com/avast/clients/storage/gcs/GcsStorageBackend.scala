@@ -5,7 +5,7 @@ import cats.effect.implicits.catsEffectSyntaxBracket
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 import cats.syntax.all._
 import com.avast.clients.storage.compression.ZstdDecompressOutputStream
-import com.avast.clients.storage.gcs.GcsStorageBackend.composeBlobPath
+import com.avast.clients.storage.gcs.GcsStorageBackend.{composeBlobPath, getMetadataValue, CompressionTypeHeader, OriginalSizeHeader}
 import com.avast.clients.storage.{ConfigurationException, GetResult, HeadResult, StorageBackend, StorageException}
 import com.avast.scala.hashes.Sha256
 import com.google.auth.oauth2.ServiceAccountCredentials
@@ -35,10 +35,10 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
         blob <- getBlob(sha256)
         result = blob match {
           case Some(blob) =>
-            blob.getMetadata.get(GcsStorageBackend.OriginalSizeHeader) match {
-              case null =>
+            getMetadataValue(blob, OriginalSizeHeader) match {
+              case None =>
                 HeadResult.Exists(blob.getSize)
-              case originalSize =>
+              case Some(originalSize) =>
                 HeadResult.Exists(originalSize.toLong)
             }
           case None =>
@@ -108,9 +108,6 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
   }
 
   private def downloadBlobToFile(blob: Blob, fileStream: OutputStream): F[(Long, Sha256)] = {
-    def getCompressionType: Option[String] = {
-      Option(blob.getMetadata.get(GcsStorageBackend.CompressionTypeHeader)).map(_.toLowerCase)
-    }
 
     Sync[F]
       .delay {
@@ -120,7 +117,7 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
       }
       .bracket {
         case (countingStream, hashingStream) => {
-          getCompressionType match {
+          getMetadataValue(blob, CompressionTypeHeader) match {
             case None =>
               downloadBlobToStream(blob, hashingStream)
             case Some("zstd") =>
@@ -194,6 +191,10 @@ object GcsStorageBackend {
   private[gcs] def composeBlobPath(sha256: Sha256): String = {
     val sha256Hex = sha256.toHexString
     String.join("/", sha256Hex.substring(0, 2), sha256Hex.substring(2, 4), sha256Hex.substring(4, 6), sha256Hex)
+  }
+
+  private[gcs] def getMetadataValue(blob: Blob, key: String): Option[String] = {
+    Option(blob.getMetadata).flatMap(m => Option(m.get(key)))
   }
 
   private[gcs] class CountingOutputStream(target: OutputStream) extends OutputStream {
