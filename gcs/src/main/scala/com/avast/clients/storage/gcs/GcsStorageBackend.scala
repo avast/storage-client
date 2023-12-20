@@ -124,7 +124,7 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
             case None =>
               downloadBlobToStream(blob, hashingStream)
             case Some("zstd") =>
-              decodeZstdStream(blob, hashingStream)
+              decodeZstdBlobToStream(blob, hashingStream)
             case Some(unknown) =>
               throw new IllegalArgumentException(s"Unknown compression type $unknown")
           }
@@ -142,7 +142,7 @@ class GcsStorageBackend[F[_]: Sync: ContextShift](storageClient: Storage, bucket
       }
   }
 
-  private def decodeZstdStream(blob: Blob, targetStream: DigestOutputStream): F[Unit] = {
+  private def decodeZstdBlobToStream(blob: Blob, targetStream: DigestOutputStream): F[Unit] = {
     Sync[F]
       .delay(new ZstdDecompressOutputStream(targetStream))
       .bracket { decompressionStream =>
