@@ -22,15 +22,22 @@ class ZstdDecompressOutputStreamTest extends FunSuite {
 
   test("decompress zstd stream") {
     val chunkSize = 4 * 1024
-    val testCases = Seq(0, 1, chunkSize, 10 * 1024 * 1024)
 
-    for (testCase <- testCases) {
-      val original_data = generateData(testCase)
+    val lengths = Seq(0, 1, chunkSize, 10 * 1024 * 1024)
+    val levels = Seq(Zstd.minCompressionLevel(), Zstd.defaultCompressionLevel(), 9, Zstd.maxCompressionLevel())
+
+    val testCases = for {
+      size <- lengths
+      level <- levels
+    } yield (size, level)
+
+    for ((size, level) <- testCases) {
+      val original_data = generateData(size)
       val original_sha256 = computeSha256(original_data)
 
-      println(s"Original data size: ${original_data.length}")
-      val compressed_data = Zstd.compress(original_data, 9)
-      println(s"Compressed data size: ${compressed_data.length}")
+      println(s"Original data size: ${original_data.length}, level: $level")
+      val compressed_data = Zstd.compress(original_data, level)
+      println(s"Compressed data size: ${compressed_data.length}, level: $level")
 
       val sourceStream = ByteBuffer.wrap(compressed_data)
       val targetStream = new ByteArrayOutputStream()
