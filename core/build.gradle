@@ -5,7 +5,7 @@ dependencies {
 
     api 'com.github.pathikrit:better-files_2.13:3.9.2'
 
-    api "org.typelevel:cats-core_2.13:2.10.0"
+    api "org.typelevel:cats-core_2.13:2.11.0"
     api "org.typelevel:cats-effect_2.13:2.5.5"
 
     api 'com.typesafe:config:1.4.3'
