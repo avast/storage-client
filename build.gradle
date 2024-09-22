@@ -14,7 +14,7 @@ ext {
     metricsVersion = "3.0.4"
     http4sVersion = "0.22.15"
     gcsVersion = "2.43.0"
-    zstdVersion = "1.5.6-5"
+    zstdVersion = "1.5.6-6"
     monixVersion = "3.4.1" // Used only in tests.
 }
 
