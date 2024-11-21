@@ -9,7 +9,7 @@ dependencies {
     api "org.typelevel:cats-effect_2.13:2.5.5"
 
     api 'com.typesafe:config:1.4.3'
-    api "com.github.pureconfig:pureconfig_2.13:0.17.7"
+    api "com.github.pureconfig:pureconfig_2.13:0.17.8"
 
     api "com.avast.metrics:metrics-scala_2.13:$metricsVersion"
 
