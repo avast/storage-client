@@ -67,7 +67,7 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
       }
 
     } catch {
-      case NonFatal(e) => F.raiseError(e)
+      case NonFatal(e) => F.pure(Left(StorageException.InvalidResponseException(0, "", "General exception in client", e)))
     }
   }
 
@@ -92,7 +92,7 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
           }
         }
     } catch {
-      case NonFatal(e) => F.raiseError(e)
+      case NonFatal(e) => F.pure(Left(StorageException.InvalidResponseException(0, "", "General exception in client", e)))
     }
   }
 
