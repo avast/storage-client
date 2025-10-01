@@ -10,11 +10,7 @@ ext {
     monixVersion = "3.4.1" // Used only in tests.
 }
 
-nexusPublishing {
-    repositories {
-        sonatype()
-    }
-}
+tasks.register('clean') {}
 
 allprojects {
     group = 'com.avast.clients.storage'
