@@ -71,7 +71,7 @@ subprojects {
             publications {
                 mavenJava(MavenPublication) {
                     from(components.java)
-                    artifactId = archivesBaseName
+                    artifactId = tasks.jar.archiveBaseName.get()
                     pom {
                         name = 'Scala storage client'
                         description = 'Finally-tagless implementation of client for misc. storages represented by backends. Supports backends fallbacks.'

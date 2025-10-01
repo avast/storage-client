@@ -1,4 +1,6 @@
-archivesBaseName = "storage-client-core_2.13"
+tasks.jar.configure {
+    archiveBaseName.set("storage-client-core_2.13")
+}
 
 dependencies {
     api 'com.avast.hashes:scala-hashes_2.13:4.4.0'

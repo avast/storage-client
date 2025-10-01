@@ -1,4 +1,6 @@
-archivesBaseName = "storage-client-gcs_2.13"
+tasks.jar.configure {
+    archiveBaseName.set("storage-client-gcs_2.13")
+}
 
 dependencies {
     api project(":core")
