@@ -5,7 +5,7 @@ plugins {
 ext {
     metricsVersion = "3.0.6"
     http4sVersion = "0.22.15"
-    gcsVersion = "2.58.1"
+    gcsVersion = "2.59.0"
     zstdVersion = "1.5.7-6"
     monixVersion = "3.4.1" // Used only in tests.
 }
