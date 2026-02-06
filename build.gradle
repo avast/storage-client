@@ -41,7 +41,7 @@ subprojects {
 
         testImplementation "org.http4s:http4s-blaze-server_2.13:$http4sVersion"
 
-        testImplementation "ch.qos.logback:logback-classic:1.5.27"
+        testImplementation "ch.qos.logback:logback-classic:1.5.28"
         testImplementation 'junit:junit:4.13.2'
         testImplementation "org.scalatest:scalatest_2.13:3.0.9"
         testImplementation 'org.mockito:mockito-core:5.21.0'
