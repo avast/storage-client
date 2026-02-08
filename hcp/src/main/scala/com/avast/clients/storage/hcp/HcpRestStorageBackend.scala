@@ -45,29 +45,29 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
 
     try {
       val request = prepareRequest(Method.HEAD, relativeUrl)
-
       httpClient.run(request).use { resp =>
         resp.status match {
           case Status.Ok =>
             resp.headers.get[`Content-Length`] match {
-              case Some(`Content-Length`(length)) => F.pure(Right(HeadResult.Exists(length)))
+              case Some(`Content-Length`(length)) => F.pure[Either[StorageException, HeadResult]](Right(HeadResult.Exists(length)))
               case None =>
                 resp.bodyText.compile.toList.map { body =>
-                  Left(StorageException.InvalidResponseException(resp.status.code, body.mkString, "Missing Content-Length header"))
+                  Left(StorageException.InvalidResponseException(resp.status.code, body.mkString, "Missing Content-Length header")): Either[StorageException, HeadResult]
                 }
             }
           case Status.NotFound =>
-            F.pure(Right(HeadResult.NotFound))
+            F.pure[Either[StorageException, HeadResult]](Right(HeadResult.NotFound))
 
           case _ =>
             resp.bodyText.compile.toList.map { body =>
-              Left(StorageException.InvalidResponseException(resp.status.code, body.mkString, "Unexpected status"))
+              Left(StorageException.InvalidResponseException(resp.status.code, body.mkString, "Unexpected status")): Either[StorageException, HeadResult]
             }
         }
+      }.handleErrorWith {
+        case NonFatal(e) => F.pure[Either[StorageException, HeadResult]](Left(StorageException.InvalidResponseException(0, "", "General exception in client", e)))
       }
-
     } catch {
-      case NonFatal(e) => F.pure(Left(StorageException.InvalidResponseException(0, "", "General exception in client", e)))
+      case NonFatal(e) => F.pure[Either[StorageException, HeadResult]](Left(StorageException.InvalidResponseException(0, "", "General exception in client", e)))
     }
   }
 
@@ -78,21 +78,23 @@ class HcpRestStorageBackend[F[_]: Sync: ContextShift](baseUrl: Uri, username: St
 
     try {
       val request = prepareRequest(Method.GET, relativeUrl)
-
       httpClient
         .run(request).use { resp =>
           resp.status match {
             case Status.Ok => receiveStreamedFile(resp, dest, sha256)
-            case Status.NotFound => F.pure(Right(GetResult.NotFound))
+            case Status.NotFound => F.pure[Either[StorageException, GetResult]](Right(GetResult.NotFound))
 
             case _ =>
               resp.bodyText.compile.toList.map { body =>
-                Left(StorageException.InvalidResponseException(resp.status.code, body.mkString, "Unexpected status"))
+                Left(StorageException.InvalidResponseException(resp.status.code, body.mkString, "Unexpected status")): Either[StorageException, GetResult]
               }
           }
         }
+        .handleErrorWith {
+          case NonFatal(e) => F.pure[Either[StorageException, GetResult]](Left(StorageException.InvalidResponseException(0, "", "General exception in client", e)))
+        }
     } catch {
-      case NonFatal(e) => F.pure(Left(StorageException.InvalidResponseException(0, "", "General exception in client", e)))
+      case NonFatal(e) => F.pure[Either[StorageException, GetResult]](Left(StorageException.InvalidResponseException(0, "", "General exception in client", e)))
     }
   }
 
